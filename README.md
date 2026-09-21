@@ -331,6 +331,6 @@ nesubstituovaný placeholder a že se vložily přesně tři obrázky.
 ## Původ a použití
 
 Používejte, upravujte a nabízejte dál, jak uznáte za vhodné, bez jakýchkoli
-podmínek.
+podmínek. Formálně: volné dílo, [Unlicense](LICENSE).
 
 Seznam hostů v repu jsou **ukázková data**, žádní skuteční lidé.
