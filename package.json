@@ -1,0 +1,14 @@
+{
+  "name": "ubytovani-zasedaci-poradek",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Rozvrhování náhledu spaní a zasedacího pořádku na půdorysech místa konání",
+  "scripts": {
+    "build": "node build.mjs",
+    "hoste": "node gen-guests.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^0.27.3"
+  }
+}

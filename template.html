@@ -1,0 +1,1683 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spací pořádek</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bark:#2C1E12; --darkBrown:#3D2B1F; --warmBrown:#6B4C3B;
+  --olive:#2D4A3E; --sage:#5A7A6A; --lightSage:#8BA89A;
+  --beige:#F5ECD7; --cream:#FAF6EE; --linen:#EDE4D3; --warmWhite:#FFF8F0;
+  --amber:#C4883A; --rust:#A0522D; --gold:#B8963E;
+  --rose:#C9949C; --roseLight:#D4A9B0;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --display:'Playfair Display',Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--darkBrown);
+  font-family:var(--serif);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;color:var(--bark)}
+h1{font-size:26px;letter-spacing:.01em}
+h2{font-size:19px}
+h3{font-size:15px}
+.script{font-family:var(--display);font-style:italic;color:var(--warmBrown)}
+button{font-family:var(--serif);font-size:15px;cursor:pointer;border:1px solid var(--linen);
+  background:var(--warmWhite);color:var(--warmBrown);border-radius:2px;padding:6px 14px;
+  letter-spacing:.03em;transition:all .2s}
+button:hover{border-color:var(--amber);color:var(--bark)}
+.rule{height:1px;background:linear-gradient(90deg,transparent,var(--linen) 15%,var(--linen) 85%,transparent);margin:0}
+
+/* ---------------- header ---------------- */
+header{background:var(--warmWhite);border-bottom:1px solid var(--linen);padding:16px 22px 12px;
+  position:sticky;top:0;z-index:60}
+.htop{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+.htop .sub{font-size:14px;color:var(--warmBrown);font-style:italic;letter-spacing:.02em}
+.htop .sub b{font-style:normal;color:var(--rust)}
+.tools{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
+
+.tabs{display:flex;gap:0;margin-bottom:11px;border-bottom:1px solid var(--linen)}
+.tabs button{border:0;border-bottom:2px solid transparent;background:none;border-radius:0;
+  padding:8px 16px;font-family:var(--display);font-size:16px;color:var(--sage);min-height:42px}
+.tabs button:hover{color:var(--bark)}
+.tabs button.on{color:var(--bark);border-bottom-color:var(--rose)}
+
+.stats{display:flex;gap:9px;flex-wrap:wrap}
+.stat{background:var(--cream);border:1px solid var(--linen);border-radius:2px;padding:6px 13px;
+  min-width:88px;text-align:center}
+.stat b{display:block;font-family:var(--display);font-size:22px;line-height:1.1;
+  color:var(--bark);font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--warmBrown)}
+.stat.ok{border-color:var(--lightSage);background:#f2f6f2} .stat.ok b{color:var(--olive)}
+.stat.warn{border-color:var(--amber);background:#fbf3e6} .stat.warn b{color:var(--amber)}
+.stat.bad{border-color:var(--rust);background:#f9eee8} .stat.bad b{color:var(--rust)}
+
+#sync{margin-top:9px;font-size:13px;color:var(--olive);display:inline-flex;
+  gap:8px;align-items:center;flex-wrap:wrap;background:#f2f6f2;
+  border:1px solid var(--lightSage);border-radius:14px;padding:5px 13px}
+#sync .dot{width:9px;height:9px;border-radius:50%;background:var(--olive);flex:none}
+#sync.busy{background:#fbf3e6;border-color:var(--amber);color:#8a5c1c}
+#sync.busy .dot{background:var(--amber)}
+#sync.err{background:#f9eee8;border-color:var(--rust);color:var(--rust);font-weight:600}
+#sync.err .dot{background:var(--rust)}
+#who{font-family:var(--serif);font-size:15px;padding:6px 10px;border:1px solid var(--linen);
+  border-radius:2px;background:var(--warmWhite);color:var(--warmBrown)}
+#who.unset{border-color:var(--amber);color:var(--amber)}
+#status{margin-top:11px;padding:10px 15px;border-radius:2px;font-size:15px;border-left:3px solid}
+#status.ok{background:#f2f6f2;border-color:var(--olive);color:var(--olive)}
+#status.warn{background:#fbf3e6;border-color:var(--amber);color:#8a5c1c}
+#status.bad{background:#f9eee8;border-color:var(--rust);color:var(--rust)}
+
+/* ---------------- layout ---------------- */
+main{display:grid;grid-template-columns:300px 1fr;gap:20px;padding:20px 22px 60px;align-items:start;
+  max-width:1700px;margin:0 auto}
+main>*{min-width:0}   /* jinak min-width plánu roztáhne celý grid a stránka scrolluje do stran */
+.planscroll{max-width:100%}
+@media (max-width:960px){main{grid-template-columns:1fr;padding:14px}}
+
+/* ---------------- guests ---------------- */
+#side{position:sticky;top:186px;background:var(--warmWhite);border:1px solid var(--linen);
+  padding:16px;max-height:calc(100vh - 206px);display:flex;flex-direction:column}
+#side h2{text-align:center;margin-bottom:2px}
+#side .cap{text-align:center;font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--rose);margin-bottom:12px}
+#side input,#side select{width:100%;padding:7px 10px;border:1px solid var(--linen);border-radius:2px;
+  background:var(--cream);color:var(--darkBrown);font-family:var(--serif);font-size:15px;margin-bottom:7px}
+#side input:focus,#side select:focus{outline:none;border-color:var(--amber)}
+#glist{overflow-y:auto;flex:1;margin:6px -5px 0;padding:0 5px}
+.g{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid transparent;
+  border-bottom:1px solid var(--linen);background:transparent;cursor:grab;user-select:none}
+.g:hover{background:var(--beige)}
+.g.sel{background:#f7ecee;border-color:var(--rose);box-shadow:inset 3px 0 0 var(--rose)}
+.g.no{opacity:.38}
+.g .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;font-size:16px}
+.g .meta{font-size:11px;color:var(--sage);white-space:nowrap;font-style:italic}
+.tri{border:1px solid var(--linen);border-radius:50%;width:23px;height:23px;padding:0;
+  font-size:12px;line-height:1;flex:none;display:grid;place-items:center;background:var(--cream)}
+.tri.yes{background:#e8f0e9;color:var(--olive);border-color:var(--lightSage)}
+.tri.no{background:#f6e9e4;color:var(--rust);border-color:var(--rust)}
+.tri.unk{background:#fbf3e6;color:var(--amber);border-color:var(--amber);font-weight:600}
+.tag{font-size:10px;padding:1px 6px;border-radius:9px;flex:none;letter-spacing:.06em;
+  text-transform:uppercase;font-family:var(--serif)}
+.tag.kid{background:var(--beige);color:var(--warmBrown)}
+.tag.q{background:#fbf3e6;color:var(--amber)}
+.hint{font-size:13px;color:var(--sage);line-height:1.7;margin-top:12px;font-style:italic}
+kbd{font-family:var(--serif);font-style:normal;background:var(--beige);border:1px solid var(--linen);
+  border-radius:2px;padding:0 5px;font-size:12px}
+
+.stale{background:#f9eee8;border:1px solid var(--rust);border-left:3px solid var(--rust);
+  padding:11px 14px;margin-bottom:14px;display:flex;gap:12px;align-items:center;
+  flex-wrap:wrap;font-size:15px;color:var(--rust)}
+.stale b{font-weight:600} .stale .tn{font-style:italic;opacity:.8;font-size:13px}
+.stale button{margin-left:auto;border-color:var(--rust);color:var(--rust);min-height:38px}
+.stale button:hover{background:#fff;border-color:var(--rust);color:var(--rust)}
+
+/* ---------------- kdo ještě nemá místo ---------------- */
+.todo{background:var(--warmWhite);border:1px solid var(--amber);
+  border-left:3px solid var(--amber);padding:12px 14px;margin-bottom:16px}
+.todo.done{border-color:var(--lightSage);border-left-color:var(--olive);background:#f2f6f2}
+.todo .th{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:9px}
+.todo .th b{font-family:var(--display);font-size:16px;color:var(--bark);font-weight:400}
+.todo.done .th b{color:var(--olive)} .todo.done .th{margin-bottom:0}
+.todo .tn{font-size:13px;color:var(--warmBrown);font-style:italic}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;padding:5px 11px;border:1px solid var(--linen);border-radius:13px;
+  background:var(--cream);color:var(--warmBrown);min-height:32px;letter-spacing:0;cursor:grab}
+.chip.unk{background:#fbf3e6;border-color:var(--amber);color:#8a5c1c}
+.chip.unk::after{content:" ?";font-weight:700}
+.chip:hover{border-color:var(--rose)!important}
+.chip.sel{box-shadow:0 0 0 2px var(--rose);border-color:var(--rose)!important}
+
+/* ---------------- zones ---------------- */
+.zone{background:var(--warmWhite);border:1px solid var(--linen);padding:20px;margin-bottom:20px}
+.zhead{text-align:center;margin-bottom:16px}
+.zhead .orn{color:var(--rose);font-size:13px;letter-spacing:.4em;margin-bottom:4px}
+.zcap{font-size:13px;color:var(--warmBrown);font-style:italic;font-variant-numeric:tabular-nums}
+.zcap.over{color:var(--rust);font-style:normal;font-weight:600}
+.verbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;
+  margin:12px 0 4px;padding:10px 12px;background:var(--beige);
+  border:1px solid var(--linen);border-radius:3px}
+.verlbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--warmBrown)}
+.versel{font-family:var(--serif);font-size:15px;color:var(--bark);background:var(--warmWhite);
+  border:1px solid var(--linen);border-radius:2px;padding:5px 8px;cursor:pointer;max-width:60vw}
+.versel:hover{border-color:var(--amber)}
+.verbtn{font-size:13px;padding:5px 9px}
+.znote{font-size:14px;color:var(--sage);font-style:italic;text-align:center;
+  max-width:640px;margin:6px auto 0;line-height:1.6}
+
+/* ---------------- floor plan ---------------- */
+.planscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:18px 0 6px}
+.planwrap{position:relative;width:100%;border:1px solid var(--linen);background:#fff}
+.planwrap img{display:block;width:100%;height:auto}
+.ov{position:absolute;border-radius:2px}
+.ov.room{border:1px solid rgba(107,76,59,.3);background:transparent;z-index:1;cursor:pointer;
+  transition:background .15s,border-color .15s}
+.ov.room:hover,.ov.room.drop{background:rgba(201,148,156,.28);border-color:var(--rose)}
+.ov.room.full{border-color:var(--lightSage);background:rgba(45,74,62,.08)}
+.rbadge{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);white-space:nowrap;
+  z-index:3;pointer-events:none;
+  background:var(--warmWhite);border:1px solid var(--linen);border-radius:2px;padding:1px 8px;
+  font-size:12px;letter-spacing:.05em;color:var(--warmBrown);font-variant-numeric:tabular-nums;
+  box-shadow:0 1px 3px rgba(44,30,18,.12)}
+.ov.room.full .rbadge{border-color:var(--lightSage);color:var(--olive)}
+
+.ov.bed{z-index:2;display:grid;place-items:center;cursor:pointer;overflow:hidden;
+  border:1px dashed rgba(107,76,59,.55);background:rgba(255,248,240,.2);
+  font-size:11px;color:var(--warmBrown);text-align:center;line-height:1.15;padding:1px}
+.ov.bed:hover,.ov.bed.drop{border-style:solid;border-color:var(--rose);background:rgba(212,169,176,.6)}
+.ov.bed.taken{border-style:solid;border-color:var(--olive);background:rgba(139,168,154,.82);
+  color:var(--bark);font-weight:600}
+.ov.bed span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov.bed.vert span{transform:rotate(-90deg);max-width:none}
+.ov.bed .plus{opacity:.45;font-size:14px}
+
+/* karimatka v půdorysu — tečkovaně a jantarově, ať je jasné, že to není postel */
+.ov.floorchip{z-index:2;display:flex;align-items:center;justify-content:center;gap:4px;
+  border:1.5px dotted var(--amber);background:rgba(253,248,240,.92);cursor:pointer;
+  font-size:11px;color:var(--amber);overflow:hidden;padding:0 4px;
+  box-shadow:0 1px 3px rgba(44,30,18,.14)}
+.ov.floorchip .ic{font-size:12px;line-height:1;flex:none;opacity:.8}
+.ov.floorchip .tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov.floorchip.taken{border-style:solid;background:rgba(248,238,218,.97);
+  color:var(--bark);font-weight:600}
+.ov.floorchip:hover,.ov.floorchip.drop{border-color:var(--rose);background:rgba(212,169,176,.6)}
+.ov.floorchip.narrow .tx{display:none}   /* úzká plocha — jen ikona, jméno v tooltipu */
+
+/* ---- zasedací pořádek ---- */
+.ov.tbl{border:1px solid rgba(107,76,59,.35);background:transparent;z-index:1;pointer-events:none}
+.ov.tbl.full{border-color:var(--lightSage)}
+.ov.tbl .tb{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;
+  background:var(--warmWhite);border:1px solid var(--linen);border-radius:2px;padding:2px 9px;
+  font-size:12px;letter-spacing:.05em;color:var(--warmBrown);font-variant-numeric:tabular-nums;
+  box-shadow:0 1px 3px rgba(44,30,18,.12)}
+.ov.tbl.full .tb{border-color:var(--lightSage);color:var(--olive)}
+.ov.seat{z-index:2;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  border:1.5px dashed rgba(107,76,59,.55);background:rgba(255,248,240,.55);
+  font-size:11px;font-weight:600;color:var(--warmBrown);overflow:hidden}
+.ov.seat.taken{border-style:solid;border-color:var(--olive);background:rgba(139,168,154,.9);
+  color:var(--bark)}
+.ov.seat:hover,.ov.seat.drop{border-color:var(--rose)!important;
+  background:rgba(212,169,176,.85)!important;transform:scale(1.15);z-index:6}
+
+/* jmenovka na stole — celé jméno, zalomené na 2–3 řádky */
+.ov.nameplate{z-index:3;display:grid;place-items:center;cursor:pointer;overflow:hidden;
+  border:1px dotted rgba(107,76,59,.4);background:rgba(255,255,255,.28);
+  padding:1px 2px;text-align:center}
+.ov.nameplate span{font-size:10px;line-height:1.15;font-weight:600;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+  word-break:break-word;hyphens:auto}
+.ov.nameplate.taken{border-style:solid;border-width:1.5px;box-shadow:0 1px 2px rgba(44,30,18,.15)}
+.ov.nameplate:hover,.ov.nameplate.drop{border-color:var(--rose)!important;
+  background:rgba(212,169,176,.5)!important;z-index:5}
+.legend.groups{gap:10px 14px;font-style:normal;font-size:12px;color:var(--warmBrown)}
+.legend.groups i{width:14px;height:11px;border-width:1.5px;border-style:solid;border-radius:2px}
+.legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:12px;
+  color:var(--sage);font-style:italic;margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:5px;
+  vertical-align:-1px;border:1px solid}
+.lg-free{background:rgba(255,248,240,.9);border-color:rgba(107,76,59,.5);border-style:dashed}
+.lg-taken{background:rgba(139,168,154,.78);border-color:var(--olive)}
+
+/* ---------------- room cards ---------------- */
+.plan{display:grid;gap:12px;margin-top:16px}
+.plan.podkrovi{grid-template-columns:1.15fr 1fr 1.6fr}
+.plan.prizemi{grid-template-columns:1fr 1fr 1.25fr}
+.plan.flat{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+@media (max-width:820px){.plan.podkrovi,.plan.prizemi{grid-template-columns:1fr}}
+.col{display:grid;gap:12px;align-content:start}
+.room{border:1px solid var(--linen);padding:11px 12px;background:var(--cream)}
+.room.full{border-color:var(--lightSage);background:#f4f7f3}
+.rhead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
+  border-bottom:1px solid var(--linen);padding-bottom:5px}
+.rcount{margin-left:auto;font-size:13px;color:var(--sage);font-variant-numeric:tabular-nums;font-style:italic}
+.rnote{font-size:12.5px;color:var(--sage);font-style:italic;margin-bottom:8px;line-height:1.45}
+.rnote.warn{color:var(--amber)}
+.beds{display:grid;gap:5px}
+/* Dva sloupce jen když je na ně v kartě místo. Dřív se řídily počtem lůžek,
+   takže pokoj s 5 místy se do úzké karty naskládal dvousloupcově a jména
+   se překrývala. auto-fit to řeší podle skutečné šířky. */
+.beds.multi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.bed{border:1px dashed var(--linen);border-radius:2px;padding:5px 9px;min-height:34px;
+  display:flex;align-items:center;gap:7px;font-size:15px;background:var(--warmWhite)}
+.bed.empty{cursor:pointer;color:var(--sage)}
+.bed.empty:hover,.bed.drop{border-style:solid;border-color:var(--rose);background:#f9f0f1}
+.bed.taken{border-style:solid;border-color:var(--lightSage);background:#eff4ee;cursor:grab}
+.bed .bt{font-size:11px;color:var(--sage);flex:none;letter-spacing:.08em;text-transform:uppercase;font-style:italic}
+.bed .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.bed .x{border:0;background:none;color:var(--sage);padding:0 3px;font-size:17px;line-height:1;flex:none}
+.bed .x:hover{color:var(--rust)}
+.capin{width:48px;padding:2px 6px;border:1px solid var(--linen);border-radius:2px;
+  background:var(--warmWhite);color:var(--darkBrown);font-family:var(--serif);font-size:14px}
+
+/* karimatky na zemi */
+.bed.floor{border-style:dotted;border-color:var(--amber);background:#fdf8f0}
+.bed.floor.taken{border-style:solid;border-color:var(--amber);background:#f8eeda}
+.bed.floor .bt{color:var(--amber)}
+.floorctl{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:7px;
+  border-top:1px dotted var(--linen);font-size:12.5px;color:var(--sage);font-style:italic}
+.floorctl button{min-width:30px;min-height:30px;padding:0 8px;line-height:1;font-size:16px}
+.floorctl button:disabled{opacity:.35;cursor:default;border-color:var(--linen)}
+.floorctl span{flex:1}
+
+/* ---------------- mobil ---------------- */
+@media (max-width:960px){
+  /* hlavička na mobilu zabírala půl displeje a překrývala seznam */
+  header{position:static;padding:12px 14px 10px}
+  h1{font-size:21px}
+  .htop{gap:10px;margin-bottom:9px}
+  .tools{width:100%;margin-left:0}
+  .tools button,#who{flex:1 1 auto;min-height:42px}
+  .stat{flex:1 1 88px;min-width:0;padding:5px 8px}
+  .stat b{font-size:18px}
+  #status{font-size:14px;padding:9px 12px}
+
+  main{grid-template-columns:1fr;gap:14px;padding:12px}
+  #main-col{order:1}                      /* plán hned, ne až pod 70 jmény */
+  #side{order:2;position:static;max-height:none}
+  #glist{overflow:visible;max-height:none}
+  .g{padding:9px 8px}                     /* větší cíl pro prst */
+  .tri{width:30px;height:30px;font-size:14px}
+
+  /* plán se zmenší tak, že lůžka mají 16 px — radši ho nechat širší a scrollovat */
+  .planwrap{min-width:1000px}
+  .planwrap.seatplan{min-width:1150px}
+  .zone{padding:12px}
+  .bed{min-height:44px}
+}
+@media (max-width:420px){ .planwrap{min-width:880px} }
+
+/* lišta s vybraným hostem — aby bylo při scrollování vidět, koho ukládáš */
+#selbar{position:fixed;left:0;right:0;bottom:0;z-index:200;display:none;
+  background:var(--bark);color:var(--cream);padding:11px 14px;
+  align-items:center;gap:12px;font-size:15px;box-shadow:0 -2px 14px rgba(44,30,18,.3)}
+#selbar.on{display:flex}
+#selbar .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+#selbar .hint2{font-size:12px;opacity:.75;font-style:italic}
+#selbar button{background:transparent;border:1px solid rgba(250,246,238,.5);color:var(--cream);
+  min-height:38px;padding:6px 13px}
+#selbar button:hover{border-color:var(--cream)}
+
+/* výběr hosta klepnutím na lůžko */
+#sheet{position:fixed;inset:0;z-index:300;display:none;background:rgba(44,30,18,.45)}
+#sheet.on{display:block}
+#sheetbox{position:absolute;left:0;right:0;bottom:0;max-height:78vh;background:var(--warmWhite);
+  border-top:2px solid var(--accent);display:flex;flex-direction:column;padding:14px}
+@media (min-width:700px){#sheetbox{left:50%;right:auto;bottom:auto;top:50%;
+  transform:translate(-50%,-50%);width:420px;max-height:70vh;border:2px solid var(--accent)}}
+#sheetbox h3{margin-bottom:3px}
+#sheetbox .sub2{font-size:13px;color:var(--sage);font-style:italic;margin-bottom:10px}
+#sheetq{width:100%;padding:9px 11px;border:1px solid var(--linen);border-radius:2px;
+  background:var(--cream);font-family:var(--serif);font-size:16px;margin-bottom:8px}
+#sheetlist{overflow-y:auto;flex:1;margin:0 -4px;padding:0 4px}
+#sheetlist .g{padding:11px 8px}
+#sheetbox .close{margin-top:10px;min-height:44px}
+.occrow{display:flex;gap:9px;align-items:stretch;margin-bottom:4px}
+.occwho{flex:1;min-width:0;padding:7px 11px;border-radius:2px}
+.occwho b{display:block;font-size:16px;font-weight:600}
+.occwho span{font-size:12px;opacity:.75;font-style:italic}
+.freebtn{flex:none;min-height:44px;border-color:var(--rust);color:var(--rust)}
+.freebtn:hover{background:#f9eee8;border-color:var(--rust);color:var(--rust)}
+
+/* ---------------- print ---------------- */
+#printout{display:none}
+@media print{
+  /* Tiskne se PLÁN, ne jen seznamy — proto se .planwrap nechává vidět.
+     print-color-adjust vynutí podklady jmenovek, jinak by prohlížeč barvy zahodil. */
+  @page{size:A4 landscape;margin:8mm}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  header,#side,.hint,.tools,.tabs,#sync,.floorctl,.bed .x,#todo,#stale{display:none!important}
+  main{display:block;padding:0;max-width:none}
+  #zones{display:block}
+  /* Každé patro / stodola dostane vlastní stránku. Plán se nesmí rozlomit,
+     ale zóna jako celek ano — jinak Chrome vystrčí plán na další stranu
+     a první zůstane prázdná (na to jsem narazil). */
+  .zone{border:0;padding:0;margin:0 0 4mm;background:#fff}
+  .zone.haplan{break-after:page}
+  .zhead .orn{display:none} .zhead{margin-bottom:3mm}
+  .zhead h2{font-size:15pt} .zcap{font-size:8pt} .znote{display:none}
+  /* Ovládání se netiskne, ale na papíře musí být vidět, KTERÁ varianta to je —
+     jinak leží na stole tři nerozlišitelné zasedačky. */
+  .verbar{display:none}
+  .zcap::after{content:" · varianta " attr(data-ver)}
+  .planscroll{overflow:visible!important;margin:0}
+  .planwrap{min-width:0!important;width:100%!important;border:1px solid #999;
+    break-inside:avoid;margin:0 auto}
+  /* stodola je téměř kvadratická → omezit šířkou, ať se vejde na výšku stránky */
+  .planwrap.seatplan{width:196mm!important}
+  .legend{font-size:7pt;margin-top:2mm}
+  .plan{break-inside:avoid}
+  .room{border:1px solid #bbb;background:#fff;padding:4px 6px}
+  .rhead h3{font-size:9pt} .rcount{font-size:8pt} .rnote{display:none}
+  .bed{min-height:0;padding:1px 4px;font-size:8pt;border-color:#ccc}
+  .bed .bt{font-size:6pt}
+  .ov.nameplate span{font-size:7.5pt;-webkit-line-clamp:4}
+  .ov.seat{font-size:6.5pt}
+  .ov.room,.ov.tbl{border-color:#aaa}
+  .rbadge,.ov.tbl .tb{font-size:7pt;box-shadow:none}
+  #printout{display:block;padding:0;break-before:page}
+  #printout h2{font-size:14pt;text-align:center;margin-bottom:1mm}
+  #printout .pcap{text-align:center;font-style:italic;color:#555;font-size:8pt;margin-bottom:4mm}
+  #printout h3{font-size:10pt;margin:4mm 0 1mm;border-bottom:1px solid #333;padding-bottom:1px;
+    letter-spacing:.08em;text-transform:uppercase}
+  #printout ol{margin:0 0 2mm;padding-left:16px;font-size:9pt;columns:3;column-gap:8mm}
+  #printout .rn{font-weight:600}
+  #printout>div{break-inside:avoid}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="htop">
+    <div>
+      <h1>Spací pořádek</h1>
+      <div class="sub"></div>
+    </div>
+    <div class="tools">
+      <select id="who" title="Kdo právě rozvrhuje"><option value="">Kdo jsi…</option></select>
+      <button onclick="window.print()">Tisk / PDF</button>
+      <button id="bHistory">Historie</button>
+      <button id="bExport" title="Stáhne rozvržení jako soubor. Na ukládání to není potřeba, to jde samo.">Export JSON</button>
+      <button id="bImport" title="Načte rozvržení ze souboru">Import JSON</button>
+      <button id="bReset">Vynulovat</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-v="spani">Spaní</button>
+    <button data-v="sezeni">Zasedací pořádek</button>
+  </div>
+  <div id="verbarhost"></div>
+  <div class="stats" id="stats"></div>
+  <div id="sync"></div>
+  <div id="status"></div>
+</header>
+
+<main>
+  <aside id="side">
+    <h2>Hosté</h2>
+    <div class="cap">seznam</div>
+    <input type="search" id="q" placeholder="Hledat jméno…">
+    <select id="fGroup"><option value="">Všechny skupinky</option></select>
+    <select id="fState">
+      <option value="todo">K uložení (spí + neurčeno)</option>
+      <option value="unassigned">Jen nepřiřazení</option>
+      <option value="unk">Jen neurčeno</option>
+      <option value="yes">Jen „spí"</option>
+      <option value="all">Všichni</option>
+    </select>
+    <div id="glist"></div>
+    <div class="hint" id="hintSpani">
+      Klepni na volné lůžko v plánu a vyber, kdo tam půjde. Nebo naopak: klepni na hosta
+      a pak na lůžko (na počítači jde i přetáhnout).<br>
+      Kolečko <kbd>?</kbd> → <kbd>✓</kbd> → <kbd>✗</kbd> přepíná neurčeno / spí / nespí.<br>
+      Na telefonu jde plánem posouvat do stran a přiblížit ho prsty.
+    </div>
+    <div class="hint" id="hintSezeni" style="display:none">
+      Klepni na volnou židli a vyber, kdo tam sedí. Sezení je <b>nezávislé na spaní</b> —
+      místo u stolu potřebuje každý, kdo přijde, i když na statku nespí.<br>
+      V židli jsou iniciály, celé jméno se ukáže po přejetí myší.
+    </div>
+  </aside>
+
+  <div id="main-col">
+    <div id="stale"></div>
+    <div id="todo"></div>
+    <div id="zones"></div>
+    <div class="hint" style="text-align:center;max-width:620px;margin:0 auto">
+      Ukládá se <b>na server</b> — všichni organizátoři vidí to samé a změny se objeví do pár vteřin.
+      Nahoře vyber, kdo jsi, ať je poznat, kdo co měnil. Kdyby se něco pokazilo,
+      <b>Záloha</b> stáhne aktuální rozvržení do souboru.
+    </div>
+  </div>
+  <div id="printout"></div>
+</main>
+
+<div id="selbar">
+  <div><div class="nm" id="selname"></div><div class="hint2">klepni na volné lůžko v plánu</div></div>
+  <button id="selcancel">Zrušit</button>
+</div>
+
+<div id="sheet">
+  <div id="sheetbox">
+    <h3 id="sheettitle">Kdo sem půjde?</h3>
+    <div class="sub2" id="sheetsub"></div>
+    <div id="sheetocc"></div>
+    <input type="search" id="sheetq" placeholder="Hledat jméno…">
+    <div id="sheetlist"></div>
+    <button class="close" id="sheetclose">Zavřít</button>
+  </div>
+</div>
+
+<script>
+/* ======================== NASTAVENÍ AKCE ========================
+   JEDINÉ MÍSTO, kde se mění texty, jména organizátorů a kapacity.
+   Zbytek kódu si je bere odsud — nikde jinde je přepisovat nemusíš.     */
+const EVENT = {
+  akce:         "Jméno akce",          // např. „Svatba Novákových" nebo „Firemní víkend"
+  datum:        "1. ledna 2027",
+  misto:        "Statek Heřmanice",
+  editori:      ["Organizátor 1", "Organizátor 2"],  // rozbalovátko „Kdo jsi…"
+  stropSpani:   38,                    // kolik lidí smí přespat (budova + stany)
+  stropHostina: 70,                    // kolik se vejde na hostinu
+};
+
+/* Propsání do stránky. Skript běží až za hlavičkou, takže prvky v DOM jsou. */
+document.title = "Spací pořádek — " + EVENT.akce;
+document.querySelector("header .sub").innerHTML =
+  `${EVENT.akce} · ${EVENT.datum} · ${EVENT.misto} · ubytovací strop <b>${EVENT.stropSpani} osob</b>`;
+document.getElementById("who").insertAdjacentHTML("beforeend",
+  EVENT.editori.map(x => `<option>${x}</option>`).join(""));
+
+/* ============================ HOSTÉ ============================
+   UKÁZKOVÁ DATA — přepiš je svými hosty. Formát řádku:
+     [id, jméno, skupinka, spaní, účast, seatOnly?]
+   `id` musí být unikátní a nemění se (váže se na něj uložené rozvržení).
+   Kdo má `seatOnly` = 1, dostane místo u stolu, ale nespí (oddávající, fotograf).
+   Skupinky musí sedět s klíči v GROUP_COLORS níž, jinak dostanou šedou.
+   Seznam jde vygenerovat z tabulky — viz gen-guests.mjs.
+   spani: 'yes'=Ano-nenáročně | 'no'=Ne | 'unk'=prázdné v xlsx (NEVYPLNĚNO, ne "nespí")
+   ucast: 'ok' | 'q'=nejistá | 'x'=nedorazí                                                */
+const GUESTS=[
+ ["matka-nevesty_rodina-nevesty","Matka nevěsty","Rodina nevěsty","unk","ok"],
+ ["otec-nevesty_rodina-nevesty","Otec nevěsty","Rodina nevěsty","yes","ok"],
+ ["sestra-nevesty_rodina-nevesty","Sestra nevěsty","Rodina nevěsty","yes","ok"],
+ ["babicka-nevesty_rodina-nevesty","Babička nevěsty","Rodina nevěsty","unk","q"],
+ ["matka-zenicha_rodina-zenicha","Matka ženicha","Rodina ženicha","unk","ok"],
+ ["otec-zenicha_rodina-zenicha","Otec ženicha","Rodina ženicha","unk","ok"],
+ ["bratr-zenicha_rodina-zenicha","Bratr ženicha","Rodina ženicha","yes","ok"],
+ ["svedek_pratele","Svědek","Přátelé","yes","ok"],
+ ["svedkyne_pratele","Svědkyně","Přátelé","yes","ok"],
+ ["kamarad-1_pratele","Kamarád 1","Přátelé","yes","ok"],
+ ["kamaradka-1_pratele","Kamarádka 1","Přátelé","no","ok"],
+ ["spoluzak-1_spoluzaci","Spolužák 1","Spolužáci","unk","q"],
+ ["spoluzacka-1_spoluzaci","Spolužačka 1","Spolužáci","unk","x"],
+ ["kolega-1_kolegove","Kolega 1","Kolegové","unk","ok"],
+ ["kolegyne-1_kolegove","Kolegyně 1","Kolegové","unk","ok"],
+ ["dite-1_deti","Dítě 1","Děti","yes","ok"],
+ ["dite-2_deti","Dítě 2","Děti","yes","ok"],
+ ["nevesta_novomanzele","Nevěsta","Novomanželé","yes","ok"],
+ ["zenich_novomanzele","Ženich","Novomanželé","yes","ok"],
+ ["oddavajici_obrad-a-sluzby","Oddávající","Obřad a služby","no","ok",1],
+ ["fotograf_obrad-a-sluzby","Fotograf","Obřad a služby","no","ok",1],
+].map(g=>({id:g[0],name:g[1],group:g[2],spani:g[3],
+  ucast:g[4],seatOnly:!!g[5],kid:g[2]==="Děti"}));
+
+/* ============================ PŮDORYSY ============================
+   Souřadnice odečtené z půdorysů, v referenčním prostoru obrázku (ref = [šířka,výška]).
+   room: [x,y,w,h] · bed: [x,y,w,h] — jeden záznam = jedno lůžko (1 osoba).            */
+const PLANS={
+ podkrovi:{img:"__IMG_POD__",ref:[1400,602],
+  rooms:{p01:[33,35,297,545],p02:[612,35,150,283],p03:[772,35,168,283],p04:[950,35,420,545]},
+  beds:{
+   p01:[[120,40,71,132],[191,40,71,132]],
+   p02:[[612,42,51.5,136],[663.5,42,51.5,136]],
+   p03:[[798,42,57,136],[855,42,57,136]],
+   p04:[[962,45,58,147],[1078,45,50,147],[1133,45,50,147],[1238,45,50,147],[1293,45,52,147],
+        [1231,254,121,53],[1231,315,121,54],
+        [962,440,58,140],[1078,440,50,140],[1133,440,50,140],[1238,440,50,140],[1293,440,52,140],
+        [1173,258,23,111],[1196,258,23,111]],   // poslední dva = rozkládací gauč
+  },
+  // volná plocha [x,y,š,v] v každém pokoji, kam se kreslí karimatky (mimo postele)
+  floorBox:{p01:[40,190,285,165],p02:[616,186,142,125],
+            p03:[776,186,160,125],p04:[955,205,205,225]}},
+ prizemi:{img:"__IMG_PRI__",ref:[1400,621],
+  rooms:{p05b:[620,55,175,220],p05a:[618,285,182,285],p06:[838,55,182,235],
+         p07:[1030,55,320,230],p08:[1135,295,215,275]},
+  beds:{
+   p05b:[[688,95,47,120],[735,95,47,120]],
+   p05a:[[700,432,47.5,123],[747.5,432,47.5,123]],
+   p06:[[872,60,56.5,135],[928.5,60,56.5,135]],
+   p07:[[1190,60,60,135],[1250,60,60,135],[1190,200,60,80],[1250,200,60,80]],
+   p08:[[1180,310,65,120],[1245,310,65,120]],
+  },
+  floorBox:{p05b:[624,60,58,208],p05a:[622,292,172,130],p06:[842,200,174,82],
+            p07:[1034,60,150,215],p08:[1139,438,207,125]}},
+};
+
+/* ============================ ZÓNY ============================
+   type: D=manželská, S=jednolůžko, G=rozkládací gauč, T=stan, A=místo
+   Nakresleno: podkroví 20 + přízemí 12 = 32 lůžek v budově, 8 míst ve stanech.
+   Součet nakreslených lůžek a EVENT.stropSpani jsou dvě různá čísla — strop je
+   to, kolik lidí opravdu ubytujete, a může být nižší. Appka hlídá strop.           */
+const ZONES=[
+ {id:"podkrovi",name:"Podkroví",cap:20,layout:"podkrovi",plan:"podkrovi",
+  note:"20 lůžek ve čtyřech pokojích. S přízemím je v budově 32 lůžek. Závazný strop se nastavuje v EVENT.stropSpani nahoře.",cols:[
+   [{id:"p01",name:"Pokoj 01",note:"vlastní koupelna + obývací kout",beds:[["D",2]]}],
+   [{id:"p02",name:"Pokoj 02",beds:[["D",2]]},{id:"p03",name:"Pokoj 03",beds:[["D",2]]}],
+   [{id:"p04",name:"Pokoj 04",note:"velký spací sál — 12 jednolůžek + rozkládací gauč pro 2; 2 sdílené koupelny v patře",beds:[["S",12],["G",2]]}],
+ ]},
+ {id:"prizemi",name:"Přízemí",cap:12,layout:"prizemi",plan:"prizemi",cols:[
+   [{id:"p05b",name:"Pokoj 05b",beds:[["D",2]]},
+    {id:"p05a",name:"Pokoj 05a",note:"rozkládací gauč pro 2",beds:[["G",2]]}],
+   [{id:"p06",name:"Pokoj 06",beds:[["D",2]]},{id:"p08",name:"Pokoj 08",beds:[["D",2]]}],
+   [{id:"p07",name:"Pokoj 07",note:"manželská postel + rozkládací gauč pro 2",beds:[["D",2],["G",2]]}],
+ ]},
+ {id:"stany",name:"Stany s podsádkou",cap:8,layout:"flat",
+  note:"Jiná úroveň komfortu než v budově. Povlečení a deky ve stanech nejsou.",cols:[
+   [{id:"st1",name:"Stan 1",beds:[["T",2]]},{id:"st2",name:"Stan 2",beds:[["T",2]]},
+    {id:"st3",name:"Stan 3",beds:[["T",2]]},{id:"st4",name:"Stan 4",beds:[["T",2]]}]]},
+ {id:"jinde",name:"Jinde / dojíždí",cap:null,layout:"flat",
+  note:"Kdo se nikam nevejde nebo dojíždí. Výpustka, aby čítač „neuloženo\" mohl klesnout na nulu.",cols:[
+   [{id:"jinde1",name:"Nespí na místě",beds:[["A",40]]}]]},
+];
+const BEDLBL={D:"manželská",S:"jednolůžko",G:"gauč",T:"stan",A:"místo",F:"na zemi"};
+const HOUSE_CAP=EVENT.stropSpani, HOUSE_ZONES=["podkrovi","prizemi","stany"];
+
+/* ============================ ZASEDACÍ POŘÁDEK ============================
+   Odečteno z fotky `zasedací pořádekpng.png` (velká stodola). Tři vodorovné stoly
+   6 m (3× segment 2×1 m), každý 9 + 9 židlí po stranách a 1 v čele = 19.
+   U pravé zdi svislý stůl 6 m: 9 židlí z boku + 2 v čelech = 11. Celkem 68 míst.
+   Sezení je NEZÁVISLÉ na spaní — host spí v lůžku a zároveň někde sedí,
+   proto vlastní mapa `S.seats`, ne `S.assign`.                                  */
+const SEAT_PLAN={img:"__IMG_SEZ__",ref:[1500,1359]};
+const XS=[416,502,588,673,759,845,930,1016,1101];        // 9 židlí v řadě
+const YS=[315,399,483,566,650,734,818,901,985];          // 9 židlí u svislého stolu
+/* `lab` = místo pro celé jméno. Kreslí se na plochu stolu (tam, kde by v reálu
+   ležel příbor), takže se vejde celé jméno na 2–3 řádky, ne jen iniciály.      */
+const CW=85.7, X0=377;
+function longTable(id,name,tableY,topY,botY,endY){
+  const seats=[];
+  XS.forEach((x,i)=>seats.push({id:`${id}-h${i}`,x,y:topY,side:"horní strana",
+    lab:[X0+i*CW,tableY+2,CW,61]}));
+  XS.forEach((x,i)=>seats.push({id:`${id}-d${i}`,x,y:botY,side:"dolní strana",
+    lab:[X0+i*CW,tableY+65,CW,61]}));
+  seats.push({id:`${id}-c`,x:356,y:endY,side:"v čele",lab:[248,endY-31,122,62]});
+  return {id,name,seats,box:[377,tableY,771,128]};
+}
+// U svislého stolu se 11 jmen vejde pod sebe po celé jeho délce (čelo, 9 z boku, čelo).
+const t4lab=i=>[1154,272+i*70,112,66];
+const TABLES=[
+  longTable("t1","Stůl 1",273,251,423,337),
+  longTable("t2","Stůl 2",592,578,740,656),
+  longTable("t3","Stůl 3",912,890,1061,977),
+  {id:"t4",name:"Stůl 4 (u zdi)",box:[1150,268,120,774],
+   seats:[{id:"t4-c1",x:1213,y:251,side:"v čele",lab:t4lab(0)},
+          ...YS.map((y,i)=>({id:`t4-h${i}`,x:1297,y,side:"u zdi",lab:t4lab(i+1)})),
+          {id:"t4-c2",x:1209,y:1062,side:"v čele",lab:t4lab(10)}]},
+];
+/* Barvy podle skupinky — [obrys a text, podklad]. Drží se svatební palety. */
+const GROUP_COLORS={
+ "Rodina nevěsty":["#8a5a3c","#f4e6da"], "Rodina ženicha":["#4a7a5e","#e3efe6"],
+ "Přátelé":["#41628a","#e2eaf3"], "Spolužáci":["#a05a72","#f6e6ec"],
+ "Kolegové":["#a8762a","#f8eeda"], "Sousedé":["#2d4a3e","#dfeae3"],
+ "Děti":["#87762a","#f5f0d6"],
+ "Novomanželé":["#2C1E12","#e6dcce"], "Obřad a služby":["#5a6470","#e7eaee"],
+};
+const gcol=g=>GROUP_COLORS[g]||["#6B4C3B","#f0e8dc"];
+const ALLSEATS=TABLES.flatMap(t=>t.seats.map(s=>({...s,table:t})));
+const SEAT_CAP=ALLSEATS.length;          // 68
+const FEAST_CAP=EVENT.stropHostina;      // strop hostiny (viz EVENT nahoře)
+const tableOfSeat=sid=>sid.split("-")[0];
+const tableName=tid=>{const t=TABLES.find(x=>x.id===tid);return t?t.name:tid;};
+
+/* ============================ STAV ============================ */
+const KEY="ubytovani-v1";
+/* Priznak, ze se na tomhle zarizeni uz jednou probehla zachrana variant
+   z localStorage. Bez nej by smazana varianta pri kazdem nacteni ozivala. */
+const MIGKEY="seatvers-migrated";
+let S={assign:{},spani:{},caps:{},floor:{},seats:{},seatVers:null,seatCur:null};
+try{const r=localStorage.getItem(KEY); if(r) S=Object.assign(S,JSON.parse(r));}catch(e){}
+const BLANK=()=>({assign:{},spani:{},caps:{},floor:{},seats:{},seatVers:null,seatCur:null});
+
+/* ---------- VERZE ZASEDACÍHO POŘÁDKU ----------
+   Spaní má jednu jedinou verzi, sezení může mít víc (různé varianty usazení).
+   Klíčové rozhodnutí: `S.seats` zůstává AKTIVNÍ mapou a verze leží vedle v
+   `S.seatVers`. Díky tomu funguje všech ~15 míst v appce, která na `S.seats`
+   odkazují, úplně bez úpravy — jinak by to byl refaktor půlky kódu.
+   `S.seatVers[S.seatCur]` je úložiště, `S.seats` jeho živé zrcadlo; zrcadlí se
+   při každém `save()`, takže přepnutí verze nemůže rozdělanou práci ztratit. */
+function migrateSeatVers(){
+  if(!S.seatVers||typeof S.seatVers!=="object"||!Object.keys(S.seatVers).length){
+    S.seatVers={"Varianta A":{...(S.seats||{})}};
+    S.seatCur="Varianta A";
+  }
+  if(!S.seatCur||!S.seatVers[S.seatCur]) S.seatCur=Object.keys(S.seatVers)[0];
+  S.seats=S.seats||{};
+  /* Smíření se starým klientem: kdo má načtenou verzi appky bez variant, edituje
+     jen `S.seats` a do `seatVers` nic nezrcadlí. Kdyby se pak přepnula varianta,
+     jeho práce by se zahodila. Když se aktivní mapa liší od své verze, věříme
+     `S.seats` — to je to, co člověk naposled viděl na obrazovce. */
+  const cur=JSON.stringify(S.seatVers[S.seatCur]||{}), live=JSON.stringify(S.seats||{});
+  if(cur!==live) S.seatVers[S.seatCur]={...(S.seats||{})};
+}
+migrateSeatVers();
+const verNames=()=>Object.keys(S.seatVers||{});
+const verTaken=n=>ALLSEATS.filter(s=>(S.seatVers[n]||{})[s.id]).length;
+function switchVer(name){
+  if(!S.seatVers[name]||name===S.seatCur) return;
+  S.seatVers[S.seatCur]={...(S.seats||{})};
+  S.seatCur=name; S.seats={...S.seatVers[name]};
+  save(); render();
+}
+function newVer(from){
+  const base=verNames().length+1;
+  let n=prompt(from?"Název kopie:":"Název nové varianty:", from?S.seatCur+" (kopie)":"Varianta "+String.fromCharCode(64+base));
+  if(!n) return; n=n.trim(); if(!n) return;
+  if(S.seatVers[n]){ alert("Varianta „"+n+"\" už existuje."); return; }
+  S.seatVers[S.seatCur]={...(S.seats||{})};
+  S.seatVers[n]=from?{...(S.seats||{})}:{};
+  S.seatCur=n; S.seats={...S.seatVers[n]};
+  save(); render();
+}
+function renameVer(){
+  let n=prompt("Nový název varianty:",S.seatCur);
+  if(!n) return; n=n.trim(); if(!n||n===S.seatCur) return;
+  if(S.seatVers[n]){ alert("Varianta „"+n+"\" už existuje."); return; }
+  const keep={};
+  for(const k of verNames()) keep[k===S.seatCur?n:k]=S.seatVers[k];   // zachovej pořadí
+  S.seatVers=keep; S.seatCur=n;
+  save(); render();
+}
+function deleteVer(){
+  if(verNames().length<2){ alert("Poslední variantu smazat nejde."); return; }
+  const t=verTaken(S.seatCur);
+  if(!confirm("Smazat variantu „"+S.seatCur+"\"?"+(t?" Je v ní usazeno "+t+" lidí.":""))) return;
+  delete S.seatVers[S.seatCur];
+  S.seatCur=verNames()[0]; S.seats={...S.seatVers[S.seatCur]};
+  save(); render();
+}
+/* view = kterou část appky mám otevřenou. Je to osobní nastavení, na server nejde. */
+let view=localStorage.getItem("ubytovani-view")==="sezeni"?"sezeni":"spani";
+const seating=()=>view==="sezeni";
+const MAP=()=>seating()?(S.seats=S.seats||{}):S.assign;   // aktivní mapa přiřazení
+let applyingRemote=false;   // true = stav právě přišel ze serveru, nepushovat ho zpátky
+const save=()=>{
+  /* Zrcadli aktivní mapu do její verze. Bez tohohle by se změny po přepnutí
+     varianty tiše zahodily — a to je přesně ta třída chyby, která už jednou
+     smazala Monče rozložení. */
+  if(S.seatCur&&S.seatVers) S.seatVers[S.seatCur]={...(S.seats||{})};
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  if(!applyingRemote) queueServerSave();
+};
+
+const G=Object.fromEntries(GUESTS.map(g=>[g.id,g]));
+const sp=g=>S.spani[g.id]||g.spani;
+const bedOf=gid=>Object.keys(S.assign).find(b=>S.assign[b]===gid);
+const seatOf=gid=>Object.keys(S.seats||{}).find(s=>(S.seats||{})[s]===gid);
+const slotOf=gid=>seating()?seatOf(gid):bedOf(gid);   // podle otevřené části appky
+/* Obřadník, fotograf a podobné služby jsou `seatOnly` — patří k stolu, ale na statku
+   nespí, takže se ve Spaní vůbec nezobrazují a nevstupují do jeho čítačů.        */
+const inView=g=>seating()||!g.seatOnly;
+const LIVE=()=>GUESTS.filter(g=>g.ucast!=="x"&&inView(g));
+const roomOfBed=b=>b.slice(0,b.lastIndexOf("-"));
+const ALLROOMS=Object.fromEntries(ZONES.flatMap(z=>z.cols.flat().map(r=>[r.id,r])));
+const roomName=rid=>ALLROOMS[rid]?ALLROOMS[rid].name:rid;
+const floorN=rid=>Math.max(0,Math.min(12,+(S.floor||{})[rid]||0));
+const bedCap=r=>S.caps[r.id]!=null?S.caps[r.id]:r.beds.reduce((a,b)=>a+b[1],0);
+const roomCap=r=>bedCap(r)+floorN(r.id);
+/* Karimatky se přidávají za pevná lůžka (id `<pokoj>-f<n>`), aby indexy lůžek
+   v půdorysu zůstaly sedět — plán mapuje pozice podle pořadí. */
+function slots(room){
+  const out=[];
+  const ov=S.caps[room.id];
+  if(ov!=null){ const t=room.beds[0][0];
+    for(let i=0;i<ov;i++) out.push({id:room.id+"-"+i,type:t}); }
+  else { let i=0;
+    for(const [t,n] of room.beds) for(let k=0;k<n;k++) out.push({id:room.id+"-"+(i++),type:t}); }
+  for(let f=0;f<floorN(room.id);f++) out.push({id:room.id+"-f"+f,type:"F"});
+  return out;
+}
+function setFloor(rid,n){
+  n=Math.max(0,Math.min(12,n));
+  (S.floor=S.floor||{})[rid]=n;
+  if(!n) delete S.floor[rid];
+  // uvolnit hosty z karimatek, které zmizely
+  Object.keys(S.assign).forEach(b=>{
+    const m=b.match(/^(.+)-f(\d+)$/);
+    if(m&&m[1]===rid&&+m[2]>=n) delete S.assign[b];
+  });
+  save();render();
+}
+const shortName=n=>n.replace(/\s*\(.*\)/,"");   // "Jméno (nejistá)" → "Jméno"; jinak plné jméno
+let sel=null;
+
+/* ============================ HOSTÉ ============================ */
+const gl=document.getElementById("glist"),q=document.getElementById("q"),
+      fGroup=document.getElementById("fGroup"),fState=document.getElementById("fState");
+[...new Set(GUESTS.map(g=>g.group))].forEach(x=>fGroup.add(new Option(x,x)));
+
+function renderGuests(){
+  const term=q.value.trim().toLowerCase(),grp=fGroup.value,st=fState.value;
+  gl.innerHTML="";
+  GUESTS.filter(g=>{
+    if(g.ucast==="x")return false;
+    if(!inView(g))return false;
+    if(term&&!g.name.toLowerCase().includes(term))return false;
+    if(grp&&g.group!==grp)return false;
+    const s=sp(g),placed=!!slotOf(g.id);
+    if(seating())                                  // u sezení nehraje spaní roli
+      return st==="unassigned"?!placed:true;
+    if(st==="todo")return s!=="no";
+    if(st==="unassigned")return !placed&&s!=="no";
+    if(st==="unk")return s==="unk";
+    if(st==="yes")return s==="yes";
+    return true;
+  }).forEach(g=>{
+    const s=sp(g),placed=slotOf(g.id);
+    const el=document.createElement("div");
+    el.className="g"+(sel===g.id?" sel":"")+(!seating()&&s==="no"?" no":"");
+    el.draggable=true;
+    if(!seating()){
+      const t=document.createElement("button");
+      t.className="tri "+s;t.textContent=s==="yes"?"✓":s==="no"?"✗":"?";
+      t.title="neurčeno → spí → nespí";
+      t.onclick=e=>{e.stopPropagation();
+        S.spani[g.id]=({unk:"yes",yes:"no",no:"unk"})[s];
+        if(S.spani[g.id]==="no"){const b=bedOf(g.id);if(b)delete S.assign[b];}
+        save();render();};
+      el.append(t);
+    }
+    const nm=document.createElement("div");nm.className="nm";nm.textContent=g.name;el.append(nm);
+    if(g.kid){const k=document.createElement("span");k.className="tag kid";k.textContent="dítě";el.append(k);}
+    if(g.ucast==="q"){const k=document.createElement("span");k.className="tag q";k.textContent="? účast";el.append(k);}
+    const m=document.createElement("div");m.className="meta";
+    m.textContent=placed?(seating()?tableName(tableOfSeat(placed)):roomName(roomOfBed(placed)))
+                        :g.group;el.append(m);
+    el.onclick=()=>{sel=sel===g.id?null:g.id;render();};
+    el.ondragstart=e=>{e.dataTransfer.setData("text/plain",g.id);sel=g.id;};
+    gl.append(el);
+  });
+}
+
+/* ============================ PŮDORYS ============================ */
+function planEl(zone){
+  const P=PLANS[zone.plan];if(!P)return null;
+  const [W,H]=P.ref, pc=(v,d)=>(v/d*100)+"%";
+  const wrap=document.createElement("div");wrap.className="planwrap";
+  const img=document.createElement("img");img.src=P.img;img.alt="Půdorys — "+zone.name;wrap.append(img);
+
+  for(const rid in P.rooms){
+    const room=ALLROOMS[rid];if(!room)continue;
+    const ss=slots(room),taken=ss.filter(s=>S.assign[s.id]).length;
+    const [x,y,w,h]=P.rooms[rid];
+    const d=document.createElement("div");
+    d.className="ov room"+(taken===ss.length&&ss.length?" full":"");
+    d.style.cssText=`left:${pc(x,W)};top:${pc(y,H)};width:${pc(w,W)};height:${pc(h,H)}`;
+    d.title=room.name+" — klikni pro uložení na první volné lůžko";
+    const b=document.createElement("div");b.className="rbadge";
+    b.textContent=`${room.name} · ${taken}/${ss.length}`;d.append(b);
+    d.onclick=()=>{
+      const free=ss.find(s=>!S.assign[s.id]);
+      if(sel){ if(free)place(sel,free.id); return; }
+      if(free) openSheet(free.id);};
+    d.ondragover=e=>{e.preventDefault();d.classList.add("drop");};
+    d.ondragleave=()=>d.classList.remove("drop");
+    d.ondrop=e=>{e.preventDefault();d.classList.remove("drop");
+      const gid=e.dataTransfer.getData("text/plain");
+      const free=ss.find(s=>!S.assign[s.id]||S.assign[s.id]===gid);if(free)place(gid,free.id);};
+    wrap.append(d);
+  }
+
+  for(const rid in P.beds){
+    const room=ALLROOMS[rid];if(!room)continue;
+    const ss=slots(room);
+    P.beds[rid].forEach((box,i)=>{
+      const s=ss[i];if(!s)return;
+      const [x,y,w,h]=box, gid=S.assign[s.id], g=gid?G[gid]:null;
+      const d=document.createElement("div");
+      d.className="ov bed"+(gid?" taken":"")+(h>w*1.35?" vert":"");
+      d.style.cssText=`left:${pc(x,W)};top:${pc(y,H)};width:${pc(w,W)};height:${pc(h,H)}`;
+      d.title=(g?g.name:"Volné")+" — "+room.name+" · "+BEDLBL[s.type];
+      const sp2=document.createElement("span");
+      if(g){sp2.textContent=shortName(g.name);}else{sp2.className="plus";sp2.textContent="+";}
+      d.append(sp2);
+      d.onclick=e=>{e.stopPropagation();
+        if(sel){place(sel,s.id);return;}
+        openSheet(s.id);};        // i obsazené — panel umí uvolnit i vyměnit
+      d.ondragover=e=>{e.preventDefault();e.stopPropagation();d.classList.add("drop");};
+      d.ondragleave=()=>d.classList.remove("drop");
+      d.ondrop=e=>{e.preventDefault();e.stopPropagation();d.classList.remove("drop");
+        place(e.dataTransfer.getData("text/plain"),s.id);};
+      if(gid){d.draggable=true;d.ondragstart=e=>{e.dataTransfer.setData("text/plain",gid);sel=gid;};}
+      wrap.append(d);
+    });
+  }
+  // karimatky — obtékají uvnitř vyhrazené volné plochy pokoje, aby nekryly postele
+  for(const rid in (P.floorBox||{})){
+    const room=ALLROOMS[rid]; if(!room) continue;
+    const n=floorN(rid); if(!n) continue;
+    const [bx,by,bw,bh]=P.floorBox[rid];
+    const CH=27, GAP=4;
+    const CW=Math.min(132,bw-2);
+    const perCol=Math.max(1,Math.floor((bh+GAP)/(CH+GAP)));
+    const maxCols=Math.max(1,Math.floor((bw+GAP)/(CW+GAP)));
+    slots(room).filter(s=>s.type==="F").forEach((s,i)=>{
+      const col=Math.floor(i/perCol), row=i%perCol;
+      if(col>=maxCols) return;            // víc se jich do pokoje nevejde, zbytek jen v kartě
+      const gid=S.assign[s.id], g=gid?G[gid]:null;
+      const d=document.createElement("div");
+      d.className="ov floorchip"+(gid?" taken":"")+(CW<70?" narrow":"");
+      d.style.cssText=`left:${pc(bx+col*(CW+GAP),W)};top:${pc(by+row*(CH+GAP),H)};`
+        +`width:${pc(CW,W)};height:${pc(CH,H)}`;
+      d.title=(g?g.name:"Volná karimatka")+" — na zemi, "+room.name;
+      d.innerHTML='<span class="ic">▭</span><span class="tx"></span>';
+      d.querySelector(".tx").textContent=g?shortName(g.name):"na zem";
+      d.onclick=e=>{e.stopPropagation();
+        if(sel){place(sel,s.id);return;}
+        openSheet(s.id);};        // i obsazené — panel umí uvolnit i vyměnit
+      d.ondragover=e=>{e.preventDefault();e.stopPropagation();d.classList.add("drop");};
+      d.ondragleave=()=>d.classList.remove("drop");
+      d.ondrop=e=>{e.preventDefault();e.stopPropagation();d.classList.remove("drop");
+        place(e.dataTransfer.getData("text/plain"),s.id);};
+      if(gid){d.draggable=true;d.ondragstart=e=>{e.dataTransfer.setData("text/plain",gid);sel=gid;};}
+      wrap.append(d);
+    });
+  }
+  const sc=document.createElement("div");sc.className="planscroll";sc.append(wrap);
+  return sc;
+}
+
+/* ============================ ZASEDACÍ POŘÁDEK ============================ */
+function renderSeating(){
+  const zl=document.getElementById("zones");
+  const [W,H]=SEAT_PLAN.ref, pc=(v,d)=>(v/d*100)+"%";
+  const used=ALLSEATS.filter(s=>(S.seats||{})[s.id]).length;
+
+  const sec=document.createElement("section");sec.className="zone";
+  const hd=document.createElement("div");hd.className="zhead";
+  hd.innerHTML=`<div class="orn">✦ ✦ ✦</div><h2>Velká stodola</h2>`;
+  const cap=document.createElement("div");cap.className="zcap";
+  cap.textContent=`${used} z ${SEAT_CAP} míst obsazeno`;
+  cap.dataset.ver=S.seatCur||"";hd.append(cap);
+  const n=document.createElement("div");n.className="znote";
+  n.textContent="Tři stoly 6 m (19 míst každý) a stůl u zdi (11 míst). Klepni na volnou "
+    +"židli a vyber, kdo tam sedí. Sezení je nezávislé na spaní.";
+  hd.append(n);
+
+
+  sec.append(hd);
+
+  const wrap=document.createElement("div");wrap.className="planwrap seatplan";
+  const img=document.createElement("img");img.src=SEAT_PLAN.img;img.alt="Zasedací pořádek — velká stodola";
+  wrap.append(img);
+
+  for(const t of TABLES){                        // obrys stolu + počet obsazených
+    const [x,y,w,h]=t.box;
+    const tk=t.seats.filter(s=>(S.seats||{})[s.id]).length;
+    const d=document.createElement("div");
+    d.className="ov tbl"+(tk===t.seats.length?" full":"");
+    d.style.cssText=`left:${pc(x,W)};top:${pc(y,H)};width:${pc(w,W)};height:${pc(h,H)}`;
+    d.innerHTML=`<span class="tb">${t.name} · ${tk}/${t.seats.length}</span>`;
+    wrap.append(d);
+  }
+
+  const SZ=44;
+  const wire=(d,s,gid)=>{                          // stejné chování pro židli i jmenovku
+    d.onclick=e=>{e.stopPropagation();
+      if(sel){place(sel,s.id);return;}
+      openSheet(s.id);};                            // obsazené místo otevře panel i pro uvolnění
+    d.ondragover=e=>{e.preventDefault();e.stopPropagation();d.classList.add("drop");};
+    d.ondragleave=()=>d.classList.remove("drop");
+    d.ondrop=e=>{e.preventDefault();e.stopPropagation();d.classList.remove("drop");
+      place(e.dataTransfer.getData("text/plain"),s.id);};
+    if(gid){d.draggable=true;d.ondragstart=e=>{e.dataTransfer.setData("text/plain",gid);sel=gid;};}
+  };
+
+  for(const s of ALLSEATS){
+    const gid=(S.seats||{})[s.id], g=gid?G[gid]:null;
+    const [fg,bg]=g?gcol(g.group):["",""];
+
+    // jmenovka na stole — celé jméno, zalomené
+    const L=document.createElement("div");
+    const [lx,ly,lw,lh]=s.lab;
+    L.className="ov nameplate"+(g?" taken":"");
+    L.style.cssText=`left:${pc(lx,W)};top:${pc(ly,H)};width:${pc(lw,W)};height:${pc(lh,H)}`
+      +(g?`;border-color:${fg};background:${bg};color:${fg}`:"");
+    L.title=(g?g.name+" — "+g.group:"Volné místo")+" · "+s.table.name+", "+s.side;
+    L.innerHTML=`<span>${g?plateName(g.name):""}</span>`;
+    wire(L,s,gid); wrap.append(L);
+
+    // kolečko na místě židle — klikací terč a orientace v plánu
+    const d=document.createElement("div");
+    d.className="ov seat"+(gid?" taken":"");
+    d.style.cssText=`left:${pc(s.x-SZ/2,W)};top:${pc(s.y-SZ/2,H)};`
+      +`width:${pc(SZ,W)};height:${pc(SZ,H)}`
+      +(g?`;border-color:${fg};background:${bg};color:${fg}`:"");
+    d.title=L.title;
+    const ini=document.createElement("span");
+    ini.textContent=g?initials(g.name):"+";
+    d.append(ini);
+    wire(d,s,gid); wrap.append(d);
+  }
+  const sc=document.createElement("div");sc.className="planscroll";sc.append(wrap);
+  sec.classList.add("haplan");sec.append(sc);
+
+  // legenda barev podle skupinek
+  const lg=document.createElement("div");lg.className="legend groups";
+  const pouzite=[...new Set(GUESTS.filter(g=>g.ucast!=="x").map(g=>g.group))];
+  lg.innerHTML=pouzite.map(gr=>{const [fg,bg]=gcol(gr);
+    return `<span><i style="background:${bg};border-color:${fg}"></i>${gr}</span>`;}).join("")
+    +`<span style="opacity:.7">volné místo je tečkovaně</span>`;
+  sec.append(lg);
+
+  // výpis po stolech, ať je vidět celá jména a jde to vytisknout
+  const plan=document.createElement("div");plan.className="plan flat";
+  for(const t of TABLES){
+    const c=document.createElement("div");c.className="room";
+    const th=document.createElement("div");th.className="rhead";
+    th.innerHTML=`<h3>${t.name}</h3>`;
+    const tc=document.createElement("span");tc.className="rcount";
+    tc.textContent=`${t.seats.filter(s=>(S.seats||{})[s.id]).length} / ${t.seats.length}`;
+    th.append(tc);c.append(th);
+    const bl=document.createElement("div");bl.className="beds multi";
+    for(const s of t.seats) bl.append(seatRow(s));
+    c.append(bl);plan.append(c);
+  }
+  sec.append(plan);
+  zl.innerHTML="";zl.append(sec);
+}
+const initials=n=>n.replace(/\s*\(.*\)/,"").split(/\s+/).map(w=>w[0]||"").join("").slice(0,3);
+/* Jmenovka má na tisku ~10 mm. Delší jména se zkrátí na „Babička P." — pořád
+   jednoznačné, ale nerozláme se to. Celé jméno zůstává v tooltipu i ve výpisu. */
+function plateName(n){
+  const s=shortName(n);
+  if(s.length<=14) return s;
+  return s.split(/\s+/).map((w,i)=>i===0||w.length<=2?w:w[0]+".").join(" ");
+}
+
+function seatRow(s){
+  const gid=(S.seats||{})[s.id], b=document.createElement("div");
+  b.className="bed "+(gid?"taken":"empty");
+  const t=document.createElement("span");t.className="bt";t.textContent=s.side;b.append(t);
+  if(gid){
+    const g=G[gid];
+    const w=document.createElement("span");w.className="who";w.textContent=g?g.name:"?";b.append(w);
+    if(g&&g.kid){const k=document.createElement("span");k.className="tag kid";k.textContent="dítě";b.append(k);}
+    const x=document.createElement("button");x.className="x";x.textContent="×";x.title="uvolnit";
+    x.onclick=e=>{e.stopPropagation();delete S.seats[s.id];save();render();};
+    b.append(x);b.draggable=true;
+    b.ondragstart=e=>{e.dataTransfer.setData("text/plain",gid);sel=gid;};
+  }else{
+    const w=document.createElement("span");w.className="who";w.style.fontStyle="italic";
+    w.textContent="volná";b.append(w);
+  }
+  b.onclick=()=>{ if(sel){place(sel,s.id);return;} openSheet(s.id); };
+  b.ondragover=e=>{e.preventDefault();b.classList.add("drop");};
+  b.ondragleave=()=>b.classList.remove("drop");
+  b.ondrop=e=>{e.preventDefault();b.classList.remove("drop");
+    place(e.dataTransfer.getData("text/plain"),s.id);};
+  return b;
+}
+
+/* ============================ ZÓNY ============================ */
+const zl=document.getElementById("zones");
+function renderZones(){
+  if(seating()) return renderSeating();
+  zl.innerHTML="";
+  for(const z of ZONES){
+    const rooms=z.cols.flat();
+    const used=rooms.reduce((a,r)=>a+slots(r).filter(s=>S.assign[s.id]).length,0);
+    const tot=rooms.reduce((a,r)=>a+roomCap(r),0);
+    const sec=document.createElement("section");sec.className="zone";
+
+    const hd=document.createElement("div");hd.className="zhead";
+    hd.innerHTML=`<div class="orn">✦ ✦ ✦</div><h2>${z.name}</h2>`;
+    const cap=document.createElement("div");
+    const fl=rooms.reduce((a,r)=>a+floorN(r.id),0);
+    cap.className="zcap"+(used>tot?" over":"");
+    cap.textContent = z.id==="jinde" ? `${used} osob`
+      : `${used} z ${tot} míst obsazeno` + (fl?` · z toho ${fl} na zemi`:"");
+    hd.append(cap);
+    if(z.note){const n=document.createElement("div");n.className="znote";n.textContent=z.note;hd.append(n);}
+    sec.append(hd);
+
+    const pl=planEl(z);
+    if(pl){
+      sec.classList.add("haplan");
+      sec.append(pl);
+      const lg=document.createElement("div");lg.className="legend";
+      lg.innerHTML=`<span><i class="lg-free"></i>volné lůžko</span>`
+        +`<span><i class="lg-taken"></i>obsazené</span>`
+        +`<span>klepni na volné lůžko a vyber, kdo tam půjde</span>`;
+      sec.append(lg);
+    }
+
+    const plan=document.createElement("div");plan.className="plan "+z.layout;
+    if(z.layout==="flat"){
+      // bez půdorysu → pokoje jdou přímo do gridu, aby se skládaly i vedle sebe
+      for(const r of rooms) plan.append(roomEl(r,z));
+    }else{
+      // s půdorysem → sloupce kopírují rozvržení budovy zleva doprava
+      for(const col of z.cols){
+        const c=document.createElement("div");c.className="col";
+        for(const r of col) c.append(roomEl(r,z));
+        plan.append(c);
+      }
+    }
+    sec.append(plan);zl.append(sec);
+  }
+}
+
+function roomEl(r,z){
+  const ss=slots(r),taken=ss.filter(s=>S.assign[s.id]).length;
+  const d=document.createElement("div");d.className="room"+(taken===ss.length&&ss.length?" full":"");
+  const hd=document.createElement("div");hd.className="rhead";
+  hd.innerHTML=`<h3>${r.name}</h3>`;
+  const c=document.createElement("span");c.className="rcount";c.textContent=`${taken} / ${ss.length}`;
+  hd.append(c);d.append(hd);
+  if(z.editable){
+    const w=document.createElement("div");w.className="rnote";
+    const inp=document.createElement("input");
+    inp.type="number";inp.min=0;inp.max=20;inp.className="capin";inp.value=roomCap(r);
+    inp.onchange=()=>{const v=Math.max(0,Math.min(20,+inp.value||0));
+      S.caps[r.id]=v;
+      Object.keys(S.assign).forEach(b=>{if(roomOfBed(b)===r.id&&+b.split("-").pop()>=v)delete S.assign[b];});
+      save();render();};
+    w.append("Kapacita: ",inp," lůžek");d.append(w);
+  }
+  if(r.note){const n=document.createElement("div");n.className="rnote"+(r.warn?" warn":"");n.textContent=r.note;d.append(n);}
+  const bl=document.createElement("div");bl.className="beds"+(ss.length>4?" multi":"");
+  for(const s of ss) bl.append(bedEl(s));
+  d.append(bl);
+
+  const fn=floorN(r.id);
+  const fc=document.createElement("div");fc.className="floorctl";
+  const minus=document.createElement("button");minus.textContent="−";minus.title="ubrat karimatku";
+  // hodnotu čteme až při kliknutí — render() mezitím tlačítko vymění za nové
+  minus.disabled=!fn; minus.onclick=()=>setFloor(r.id,floorN(r.id)-1);
+  const plus=document.createElement("button");plus.textContent="+";plus.title="přidat karimatku na zem";
+  plus.onclick=()=>setFloor(r.id,floorN(r.id)+1);
+  const lbl=document.createElement("span");
+  lbl.textContent=fn?`na zemi: ${fn}`:"přidat na zem";
+  fc.append(minus,lbl,plus); d.append(fc);
+  return d;
+}
+
+function bedEl(s){
+  const gid=S.assign[s.id],b=document.createElement("div");
+  b.className="bed "+(gid?"taken":"empty")+(s.type==="F"?" floor":"");
+  // v zónách typu „jinde" popisek „místo" nic neříká a bere šířku jménům
+  if(s.type!=="A"){
+    const t=document.createElement("span");t.className="bt";t.textContent=BEDLBL[s.type];b.append(t);
+  }
+  if(gid){
+    const g=G[gid];
+    const w=document.createElement("span");w.className="who";w.textContent=g?g.name:"?";b.append(w);
+    if(g&&g.kid){const k=document.createElement("span");k.className="tag kid";k.textContent="dítě";b.append(k);}
+    const x=document.createElement("button");x.className="x";x.textContent="×";x.title="uvolnit";
+    x.onclick=e=>{e.stopPropagation();delete S.assign[s.id];save();render();};
+    b.append(x);b.draggable=true;
+    b.ondragstart=e=>{e.dataTransfer.setData("text/plain",gid);sel=gid;};
+  }else{
+    const w=document.createElement("span");w.className="who";w.style.fontStyle="italic";
+    w.textContent="volné";b.append(w);
+  }
+  b.onclick=()=>{ if(sel){place(sel,s.id);return;} openSheet(s.id); };
+  b.ondragover=e=>{e.preventDefault();b.classList.add("drop");};
+  b.ondragleave=()=>b.classList.remove("drop");
+  b.ondrop=e=>{e.preventDefault();b.classList.remove("drop");
+    place(e.dataTransfer.getData("text/plain"),s.id);};
+  return b;
+}
+
+// Pracuje nad aktivní mapou — v části Spaní nad lůžky, v Zasedacím pořádku nad židlemi.
+function place(gid,slotId){
+  if(!gid)return;
+  const M=MAP(), prev=slotOf(gid), occupant=M[slotId];
+  if(prev===slotId){sel=null;render();return;}
+  if(prev)delete M[prev];
+  if(occupant&&prev)M[prev]=occupant;             // prohození
+  M[slotId]=gid;
+  if(!seating()&&sp(G[gid])!=="yes")S.spani[gid]="yes";   // uložený host logicky spí
+  sel=null;save();render();
+}
+
+/* ============================ ČÍTAČE ============================ */
+/* Lišta variant zasedačky. Sedí HNED POD ZÁLOŽKAMI, ne v hlavičce sekce
+   „Velká stodola" — tam byla původně a nikdo ji nenašel, protože je až pod
+   dlaždicemi, varováním a nadpisem, tedy pod ohybem. Vykreslené ≠ nalezitelné.
+   Spaní ji nemá, postelí je jedna sada. */
+function renderVerBar(){
+  const host=document.getElementById("verbarhost");
+  host.innerHTML="";
+  if(!seating()) return;
+  const vb=document.createElement("div");vb.className="verbar";
+  const lbl=document.createElement("span");lbl.className="verlbl";lbl.textContent="Varianta usazení";
+  const sel=document.createElement("select");sel.className="versel";
+  for(const nm of verNames()){
+    const o=document.createElement("option");o.value=nm;
+    o.textContent=nm+" · "+verTaken(nm)+"/"+SEAT_CAP;
+    if(nm===S.seatCur) o.selected=true;
+    sel.append(o);
+  }
+  sel.onchange=e=>switchVer(e.target.value);
+  vb.append(lbl,sel);
+  const mk=(txt,tip,fn)=>{const b=document.createElement("button");
+    b.className="verbtn";b.textContent=txt;b.title=tip;b.onclick=fn;return b;};
+  vb.append(mk("+ Nová","Prázdná varianta",()=>newVer(false)));
+  vb.append(mk("Duplikovat","Kopie téhle varianty se všemi usazenými",()=>newVer(true)));
+  vb.append(mk("Přejmenovat","",renameVer));
+  vb.append(mk("Smazat","Poslední variantu smazat nejde",deleteVer));
+  host.append(vb);
+}
+
+function renderStats(){
+  const live=LIVE();
+  if(seating()){
+    const seated=ALLSEATS.filter(s=>(S.seats||{})[s.id]).length;
+    const bez=live.filter(g=>!seatOf(g.id)).length;
+    const jisti=live.filter(g=>g.ucast!=="q").length;
+    const rows=[
+      ["Usazeno",`${seated}/${SEAT_CAP}`,seated>SEAT_CAP?"bad":seated===SEAT_CAP?"warn":"ok"],
+      ["Bez místa",bez,bez?"bad":"ok"],
+      ["Přijde jistě",jisti,""],
+      ["Nejistá účast",live.length-jisti,""],
+      ["Míst celkem",SEAT_CAP,""],
+    ];
+    document.getElementById("stats").innerHTML=
+      rows.map(([l,v,c])=>`<div class="stat ${c}"><b>${v}</b><span>${l}</span></div>`).join("");
+    const st=document.getElementById("status");
+    const nejisti=live.length-jisti, rezerva=SEAT_CAP-jisti;
+    if(jisti>SEAT_CAP){st.className="bad";
+      st.textContent=`Jistě přijde ${jisti} lidí, ale židlí je jen ${SEAT_CAP}.`
+        +` Chybí ${jisti-SEAT_CAP} míst — je potřeba přidat stůl nebo dokoupit židle.`;}
+    else if(live.length>SEAT_CAP){st.className="warn";
+      st.textContent=`Jistě přijde ${jisti} (včetně těch, kdo mají jen místo u stolu), židlí je ${SEAT_CAP}.`
+        +` Vejde se tedy ${rezerva} z ${nejisti} nejistých — pokud potvrdí víc než ${rezerva},`
+        +` chybí židle. Strop hostiny je ${FEAST_CAP}.`;}
+    else if(bez){st.className="warn";
+      st.textContent=`${bez} lidí ještě nemá židli. Volných míst je ${SEAT_CAP-seated}.`;}
+    else{st.className="ok";
+      st.textContent=`Všichni hosté mají místo — usazeno ${seated} z ${SEAT_CAP} židlí.`;}
+    return;
+  }
+  const cnt=ids=>ZONES.filter(z=>ids.includes(z.id)).flatMap(z=>z.cols.flat())
+    .reduce((a,r)=>a+slots(r).filter(s=>S.assign[s.id]).length,0);
+  const inHouse=cnt(HOUSE_ZONES),elsewhere=cnt(["jinde"]);
+  const unk=live.filter(g=>sp(g)==="unk").length;
+  const noSleep=live.filter(g=>sp(g)==="no").length;
+  const todo=live.filter(g=>sp(g)!=="no"&&!bedOf(g.id)).length;
+  const rows=[
+    ["Na statku",`${inHouse}/${HOUSE_CAP}`,inHouse>HOUSE_CAP?"bad":inHouse>=HOUSE_CAP-2?"warn":"ok"],
+    ["Jinde",elsewhere,""],
+    ["Neuloženo",todo,todo?"bad":"ok"],
+    ["Neurčeno",unk,unk?"warn":"ok"],
+    ["Nespí",noSleep,""],
+  ];
+  document.getElementById("stats").innerHTML=
+    rows.map(([l,v,c])=>`<div class="stat ${c}"><b>${v}</b><span>${l}</span></div>`).join("");
+  const onFloor=Object.keys(S.assign).filter(b=>/-f\d+$/.test(b)).length;
+  const fnote=onFloor?` Z toho ${onFloor} na karimatce.`:"";
+  const st=document.getElementById("status");
+  if(inHouse>HOUSE_CAP){st.className="bad";
+    st.textContent=`Na statku je ${inHouse} osob, strop je ${HOUSE_CAP}.${fnote} `
+      +`Nad ${HOUSE_CAP} lidí je potřeba strop zvýšit, nebo někoho přesunout.`;}
+  else if(unk){st.className="warn";
+    st.textContent=`U ${unk} hostů není vyplněné, jestli spí na místě. Dokud je tohle číslo nenulové, nejde říct, že jsou všichni uloženi. (Prázdné pole u hosta znamená „nevyplněno", ne „nespí".)`;}
+  else if(todo){st.className="warn";
+    st.textContent=`${todo} hostů, kteří spí na místě, zatím nemá lůžko.`;}
+  else{st.className="ok";
+    st.textContent=`Všichni jsou uloženi — ${inHouse} na statku, ${elsewhere} jinde, ${noSleep} nespí.`+fnote;}
+}
+
+/* ============================ TISK ============================ */
+function renderPrint(){
+  const o=document.getElementById("printout");
+  let h=`<h2>Spací pořádek</h2><div class="pcap">${EVENT.akce} · ${EVENT.datum} · ${EVENT.misto}</div>`;
+  for(const z of ZONES){
+    const rooms=z.cols.flat().filter(r=>slots(r).some(s=>S.assign[s.id]));
+    if(!rooms.length)continue;
+    h+=`<h3>${z.name}</h3>`;
+    for(const r of rooms){
+      const who=slots(r).filter(s=>S.assign[s.id]).map(s=>{
+        const g=G[S.assign[s.id]];
+        return (g?g.name:"?")+(s.type==="F"?" — na zemi (karimatka)":"");});
+      h+=`<div><span class="rn">${r.name}</span> (${who.length}/${roomCap(r)})<ol>`
+        +who.map(n=>`<li>${n}</li>`).join("")+`</ol></div>`;
+    }
+  }
+  const un=GUESTS.filter(g=>g.ucast!=="x"&&!g.seatOnly&&sp(g)!=="no"&&!bedOf(g.id));
+  if(un.length)h+=`<h3>Bez lůžka (${un.length})</h3><ol>`
+    +un.map(g=>`<li>${g.name}${sp(g)==="unk"?" — neurčeno":""}</li>`).join("")+`</ol>`;
+
+  // zasedací pořádek — na cedulky ke stolům
+  if(Object.keys(S.seats||{}).length){
+    h+=`<h3>Zasedací pořádek — velká stodola</h3>`;
+    for(const t of TABLES){
+      const occ=t.seats.filter(s=>(S.seats||{})[s.id]);
+      if(!occ.length) continue;
+      h+=`<div><span class="rn">${t.name}</span> (${occ.length}/${t.seats.length})<ol>`
+        +occ.map(s=>{const g=G[S.seats[s.id]];
+            return `<li>${g?g.name:"?"} <i>— ${s.side}</i></li>`;}).join("")+`</ol></div>`;
+    }
+    const noSeat=GUESTS.filter(g=>g.ucast!=="x"&&!seatOf(g.id));   // vč. obsluhy a služeb
+    if(noSeat.length)h+=`<h3>Bez místa u stolu (${noSeat.length})</h3><ol>`
+      +noSeat.map(g=>`<li>${g.name}</li>`).join("")+`</ol>`;
+  }
+  o.innerHTML=h;
+}
+
+/* ============================ VÝBĚR HOSTA NA MOBILU ============================
+   Na telefonu je seznam hostů daleko od plánu, takže „vyber hosta → najdi lůžko"
+   nefunguje. Proto jde klepnout rovnou na volné lůžko a hosta vybrat z panelu.   */
+const sheet=document.getElementById("sheet"), sheetList=document.getElementById("sheetlist"),
+      sheetQ=document.getElementById("sheetq"), sheetSub=document.getElementById("sheetsub");
+let sheetBed=null;
+
+function openSheet(slotId){
+  sheetBed=slotId; sheetQ.value="";
+  const occ=MAP()[slotId], og=occ?G[occ]:null;
+  if(seating()){
+    const s=ALLSEATS.find(x=>x.id===slotId);
+    sheetSub.textContent=s?`${s.table.name} · ${s.side}`:"židle";
+    document.getElementById("sheettitle").textContent=og?"Změnit místo":"Kdo sem sedne?";
+  }else{
+    const rid=roomOfBed(slotId);
+    sheetSub.textContent=roomName(rid)+(og?"":" · volné lůžko");
+    document.getElementById("sheettitle").textContent=og?"Změnit lůžko":"Kdo sem půjde?";
+  }
+  // obsazené místo: kdo tu je + tlačítko na uvolnění, pod tím výběr na výměnu
+  const box=document.getElementById("sheetocc");
+  box.innerHTML="";
+  if(og){
+    const row=document.createElement("div");row.className="occrow";
+    const [fg,bg]=gcol(og.group);
+    const who=document.createElement("div");who.className="occwho";
+    who.style.cssText=`border-left:3px solid ${fg};background:${bg}`;
+    who.innerHTML=`<b>${og.name}</b><span>${og.group}</span>`;
+    const free=document.createElement("button");free.className="freebtn";
+    free.textContent=seating()?"Uvolnit místo":"Uvolnit lůžko";
+    free.onclick=()=>{delete MAP()[slotId];closeSheet();save();render();};
+    row.append(who,free);box.append(row);
+    const hint=document.createElement("div");hint.className="sub2";
+    hint.style.margin="9px 0 2px";hint.textContent="…nebo vyber, kdo tu bude místo něj:";
+    box.append(hint);
+  }
+  sheet.classList.add("on"); renderSheet();
+  if(!matchMedia("(hover:none)").matches) setTimeout(()=>sheetQ.focus(),50);
+}
+function closeSheet(){ sheet.classList.remove("on"); sheetBed=null; }
+
+function renderSheet(){
+  const term=sheetQ.value.trim().toLowerCase();
+  sheetList.innerHTML="";
+  // u sezení nabízíme každého, kdo dorazí (i toho, kdo na statku nespí)
+  const cands=GUESTS.filter(g=>g.ucast!=="x"&&inView(g)&&!slotOf(g.id)
+    &&(seating()||sp(g)!=="no")
+    &&(!term||g.name.toLowerCase().includes(term)));
+  if(!cands.length){
+    const e=document.createElement("div");e.className="rnote";
+    e.textContent=term?"Nikdo takový mezi nezařazenými není."
+      :(seating()?"Všichni hosté už mají židli.":"Všichni hosté už mají lůžko.");
+    sheetList.append(e);return;
+  }
+  for(const g of cands){
+    const el=document.createElement("div");el.className="g";
+    if(!seating()){
+      const t=document.createElement("span");t.className="tri "+sp(g);
+      t.textContent=sp(g)==="yes"?"✓":"?";el.append(t);
+    }
+    const nm=document.createElement("div");nm.className="nm";nm.textContent=g.name;el.append(nm);
+    if(g.kid){const k=document.createElement("span");k.className="tag kid";k.textContent="dítě";el.append(k);}
+    if(g.ucast==="q"){const k=document.createElement("span");k.className="tag q";k.textContent="? účast";el.append(k);}
+    const m=document.createElement("div");m.className="meta";m.textContent=g.group;el.append(m);
+    el.onclick=()=>{const b=sheetBed;closeSheet();place(g.id,b);};
+    sheetList.append(el);
+  }
+}
+sheetQ.addEventListener("input",renderSheet);
+document.getElementById("sheetclose").onclick=closeSheet;
+sheet.onclick=e=>{if(e.target===sheet)closeSheet();};
+
+function renderSelBar(){
+  const bar=document.getElementById("selbar");
+  if(sel&&G[sel]){ bar.classList.add("on");
+    document.getElementById("selname").textContent="Ukládám: "+G[sel].name; }
+  else bar.classList.remove("on");
+}
+document.getElementById("selcancel").onclick=()=>{sel=null;render();};
+
+/* ============================ SYNC SE SERVEREM ============================
+   Stav žije v /api/state (Vercel Blob). Všichni organizátoři vidí to samé.
+   Optimistický zámek přes `version` — kdo staví na staré verzi, dostane 409.
+   Když server není k dispozici (lokální soubor), jede se jen na localStorage.   */
+const API="/api/state";
+let serverVersion=null;        // null = server zatím neznámý / offline
+let lastMeta=null;             // {updatedBy, updatedAt}
+let saveTimer=null, saving=false, dirty=false, mode="init", forceNext=false;
+const whoSel=document.getElementById("who");
+let ME=localStorage.getItem("ubytovani-me")||"";
+if(ME) whoSel.value=ME;
+whoSel.classList.toggle("unset",!ME);
+whoSel.onchange=()=>{ME=whoSel.value;localStorage.setItem("ubytovani-me",ME);
+  whoSel.classList.toggle("unset",!ME);renderSync();};
+
+/* Jediná otázka, nic víc. OK = přepsat, Zrušit = nechat serverovou. Nikdy naopak. */
+function overwriteQ(){ return "Přepsat stávající rozložení na serveru?"; }
+
+/* Nemodální řešení konfliktu při startu. Server se vezme vždy (viz initSync),
+   lokální stav se schová sem a nabídne se lištou. Žádný confirm() = appka nikdy
+   nestojí a mezitím normálně pulluje.                                          */
+let pendingLocal=null;
+function hideConflict(){
+  pendingLocal=null;
+  const b=document.getElementById("conflictbar"); if(b) b.remove();
+}
+function showConflict(){
+  if(!pendingLocal) return;
+  const n=Object.keys(pendingLocal.assign||{}).length+Object.keys(pendingLocal.seats||{}).length;
+  const host=document.getElementById("sync");
+  if(!host||!host.parentNode) return;
+  const old=document.getElementById("conflictbar"); if(old) old.remove();
+  const bar=document.createElement("div");
+  bar.id="conflictbar";
+  bar.style.cssText="margin:8px 0;padding:10px 14px;border:1px solid var(--amber,#8A5F1E);"
+    +"background:#F6EEDC;color:#241C14;font-size:14px;line-height:1.5;border-radius:4px;"
+    +"display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center";
+  const txt=document.createElement("span");
+  txt.style.flex="1 1 260px";
+  txt.innerHTML="Na tomhle zařízení byly <b>neodeslané změny</b> ("+n+" přiřazení). "
+    +"Zobrazuje se stav ze serveru, ať se nepřepíše cizí práce.";
+  const bYes=document.createElement("button");
+  bYes.type="button"; bYes.textContent="Nahrát moje změny";
+  bYes.style.cssText="padding:6px 12px;cursor:pointer";
+  bYes.onclick=()=>{
+    if(!pendingLocal) return;
+    S=Object.assign(BLANK(),pendingLocal);
+    migrateSeatVers();
+    hideConflict(); render(); queueServerSave();
+  };
+  const bNo=document.createElement("button");
+  bNo.type="button"; bNo.textContent="Zahodit je";
+  bNo.style.cssText="padding:6px 12px;cursor:pointer";
+  bNo.onclick=()=>{ hideConflict(); };
+  bar.append(txt,bYes,bNo);
+  host.parentNode.insertBefore(bar,host.nextSibling);
+}
+
+function renderSync(){
+  const el=document.getElementById("sync");
+  el.className=mode==="error"?"err":(saving||dirty?"busy":"");
+  let t;
+  if(mode==="local") t="Lokální režim — neukládá se na server (otevřeno jako soubor). Sdílej přes Zálohu.";
+  else if(mode==="error") t="Nepodařilo se spojit se serverem. Pracuješ jen lokálně — než zavřeš okno, udělej Zálohu.";
+  else if(mode==="init") t=dirty?"Připojuji se k serveru — změny mám uložené a odešlu je hned, jak se spojím."
+                              :"Připojuji se k serveru…";
+  else if(saving||dirty) t="Ukládám…";
+  else if(lastMeta&&lastMeta.updatedAt){
+    const d=new Date(lastMeta.updatedAt);
+    t=`Uloženo automaticky · naposledy ${lastMeta.updatedBy||"někdo"} v `
+      +d.toLocaleString("cs-CZ",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})
+      +" · nic ukládat nemusíš";
+  } else t="Připojeno k serveru — ukládá se samo, jen co něco naklikáš.";
+  el.innerHTML='<span class="dot"></span><span>'+t+'</span>';
+  if(!ME&&mode==="server") el.innerHTML+='<span style="color:var(--amber)">— vyber nahoře, kdo jsi, ať je vidět, kdo co měnil.</span>';
+}
+
+function applyRemote(payload){
+  applyingRemote=true;
+  /* Jednorázová záchrana variant. Do 30. 8. server seatVers nikdy neuložil, takže
+     varianty žijí jen v localStorage jednotlivých zařízení. Kdyby se sem prostě vzal
+     serverový stav, ručně vytvořené varianty by zmizely.
+
+     První verze téhle záchrany se ptala "má server VŮBEC nějaké varianty?" — jenže
+     jakmile kterékoli zařízení uložilo svou jedinou "Variantu A", podmínka přestala
+     platit a varianty ostatních zařízení by se ztratily. Proto se teď PŘILÉVÁ po
+     jménech: co je lokálně a na serveru to není, se přidá.
+
+     Aby smazaná varianta později neožila, běží to na každém zařízení JEN JEDNOU —
+     hlídá to příznak v localStorage.                                              */
+  const mineVers=S.seatVers, mineCur=S.seatCur;
+  const srvVers=(payload.data&&payload.data.seatVers)||null;
+  let migrated=true; try{ migrated=localStorage.getItem(MIGKEY)==="1"; }catch(e){}
+  S=Object.assign(BLANK(),payload.data||{});
+  let rescued=[];
+  if(!migrated&&mineVers&&typeof mineVers==="object"){
+    S.seatVers=Object.assign({},srvVers||{});
+    for(const n of Object.keys(mineVers)){
+      if(!(n in S.seatVers)){ S.seatVers[n]=mineVers[n]; rescued.push(n); }
+    }
+    if(!Object.keys(S.seatVers).length) S.seatVers=null;
+    else if(mineCur&&S.seatVers[mineCur]) S.seatCur=mineCur;
+    try{ localStorage.setItem(MIGKEY,"1"); }catch(e){}
+    if(rescued.length) console.info("zachranene varianty z tohoto zarizeni:",rescued.join(", "));
+  }
+  migrateSeatVers();          // starý stav ze serveru verze nemá, dopočítej je
+  serverVersion=payload.version; lastMeta={updatedBy:payload.updatedBy,updatedAt:payload.updatedAt};
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  applyingRemote=false;
+  if(rescued.length) queueServerSave();   // ať je server má taky
+  render();
+}
+
+function queueServerSave(){
+  if(mode==="local") return;            // lokální soubor, server neexistuje
+  dirty=true; renderSync();             // POZOR: dirty se nastaví i během "init",
+  clearTimeout(saveTimer);              // aby se změny udělané před dokončením
+  saveTimer=setTimeout(()=>{            // initSync neztratily — odešlou se pak.
+    if(mode==="server") pushNow(); else renderSync();
+  },600);
+}
+// Nejlepší snaha odeslat rozpracované změny při schování/zavření stránky.
+// iOS Safari beforeunload spolehlivě nespouští, proto pagehide + visibilitychange.
+function flushNow(){
+  if(mode!=="server"||!dirty||saving) return;
+  try{ fetch(API,{method:"PUT",keepalive:true,headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({version:serverVersion,data:S,by:ME||"neznámý"})}); }catch(e){}
+}
+
+async function pushNow(depth){
+  depth=depth||0;
+  if(mode!=="server"||saving) return;
+  if(depth>3){ mode="error"; renderSync();      // pojistka proti donekonečna opakovanému zápisu
+    console.warn("push: příliš mnoho kolizí, končím"); return; }
+  saving=true; dirty=false; renderSync();
+  try{
+    const r=await fetch(API,{method:"PUT",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({version:serverVersion,data:S,by:ME||"neznámý",force:forceNext})});
+    if(r.status===409){
+      const body=await r.json(); const current=body.current;
+      saving=false;
+      if(body.blocked==="would_erase"){
+        // server odmítl smazat všechna přiřazení bez potvrzení
+        if(confirm("Smazat stávající rozložení na serveru?")){
+          forceNext=true; await pushNow(depth+1); forceNext=false;
+        }else{ applyRemote(current); }
+        renderSync(); return;
+      }
+      // stejná otázka jako v initSync: OK = přepsat server, Zrušit = nechat serverovou
+      if(confirm(overwriteQ())){
+        serverVersion=current.version; await pushNow(depth+1);
+      }else{
+        applyRemote(current);
+      }
+      renderSync(); return;
+    }
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const p=await r.json();
+    serverVersion=p.version; lastMeta={updatedBy:p.updatedBy,updatedAt:p.updatedAt};
+    saving=false;
+    if(dirty) pushNow(depth+1); else renderSync();
+  }catch(e){ saving=false; mode="error"; renderSync(); console.warn("push failed",e); }
+}
+
+async function pullNow(){
+  if(mode!=="server"||saving||dirty) return;
+  try{
+    const r=await fetch(API,{cache:"no-store"}); if(!r.ok) return;
+    const p=await r.json();
+    if(p.version!==serverVersion){ applyRemote(p); renderSync(); }
+  }catch(e){ /* výpadek sítě, zkusíme příště */ }
+}
+
+async function initSync(){
+  if(location.protocol==="file:"){ mode="local"; renderSync(); return; }
+  try{
+    const r=await fetch(API,{cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const p=await r.json();
+    mode="server";
+    /* POZOR: do 30. 8. se tu počítala a porovnávala jen lůžka. Kdo dělal jen
+       rozsazení a na lůžka nesáhl, měl localN=0 → appka to vzala jako "nemám nic
+       svého" a jeho práci tiše zahodila. Tak zmizelo 28. 8. rozsazení ze 64 na 19.
+       Proto se do obojího musí započítat i `seats`.                              */
+    const localN=Object.keys(S.assign||{}).length+Object.keys(S.seats||{}).length;
+    const srv=p.data||{}, srvN=Object.keys(srv.assign||{}).length+Object.keys(srv.seats||{}).length;
+    const same=JSON.stringify({a:srv.assign||{},s:srv.spani||{},c:srv.caps||{},f:srv.floor||{},t:srv.seats||{}})
+             ===JSON.stringify({a:S.assign,s:S.spani,c:S.caps,f:S.floor||{},t:S.seats||{}});
+
+    if(same||!localN){
+      applyRemote(p);                                  // nemám nic svého → vezmi server
+    }else if(!srvN){
+      serverVersion=p.version; queueServerSave();       // server prázdný → nahraj moje
+    }else{
+      /* Oba mají data a liší se. Do 30. 8. tu byl blokující confirm() — ten ale
+         zmrazí celý JS, dokud na něj někdo neklikne, a appka do té doby ukazuje
+         zastaralý stav (a nepolluje). Když si dialogu nikdo nevšimne, vypadá to
+         jako "appka se nenačetla". Proto: VŽDY vezmi server (nikdy tiše nepřepiš
+         cizí práci) a moje si schovej — nabídnu je nemodální lištou.            */
+      pendingLocal=JSON.parse(JSON.stringify(S));
+      applyRemote(p);
+      showConflict();
+    }
+    if(dirty) pushNow();          // změny udělané, než dorazila odpověď serveru
+    renderSync();
+    setInterval(()=>{ if(!document.hidden) pullNow(); },8000);
+    document.addEventListener("visibilitychange",()=>{
+      if(document.hidden) flushNow(); else pullNow(); });
+    window.addEventListener("pagehide",flushNow);
+    window.addEventListener("beforeunload",e=>{
+      if(dirty||saving){ flushNow(); e.preventDefault(); e.returnValue=""; } });
+  }catch(e){ mode="error"; renderSync(); console.warn("init sync failed",e); }
+}
+
+/* ============================ IO ============================ */
+document.getElementById("bExport").onclick=()=>{
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="spaci-poradek.json";a.click();
+};
+document.getElementById("bImport").onclick=()=>{
+  const i=document.createElement("input");i.type="file";i.accept=".json,application/json";
+  i.onchange=()=>{const f=i.files[0];if(!f)return;const rd=new FileReader();
+    rd.onload=()=>{try{S=Object.assign(BLANK(),JSON.parse(rd.result));save();render();}
+      catch(e){alert("Nepovedlo se načíst soubor.")}};
+    rd.readAsText(f);};
+  i.click();
+};
+document.getElementById("bReset").onclick=()=>{
+  const q=mode==="server"
+    ? `Smazat CELÉ rozvržení včetně toho na serveru?\n\nTím se smaže i práce ostatních — ${EVENT.editori.join(" i ")} uvidí prázdný plán.\nPokud si jen chceš uklidit u sebe, tohle tlačítko nepoužívej.`
+    : "Smazat všechna přiřazení i ručně nastavené stavy spaní?";
+  if(!confirm(q)) return;
+  if(mode==="server"&&!confirm("Opravdu? Tohle nejde vzít zpět jinak než přes Historii.")) return;
+  S=BLANK(); forceNext=true; save(); render();
+  setTimeout(()=>{forceNext=false;},3000);
+};
+
+/* ---- Historie / obnova ---- */
+document.getElementById("bHistory").onclick=async()=>{
+  if(mode!=="server"){alert("Historie je jen u verze na serveru.");return;}
+  try{
+    const r=await fetch(API+"?history=1",{cache:"no-store"});
+    const {history}=await r.json();
+    if(!history||!history.length){alert("Historie je prázdná.");return;}
+    const lines=history.map((h,i)=>`${i+1}) v${h.version} — ${h.count} hostů — `
+      +`${h.updatedBy||"?"} — ${new Date(h.updatedAt).toLocaleString("cs-CZ",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}`);
+    const pick=prompt("Historie rozvržení (nejnovější první).\n\n"+lines.join("\n")
+      +"\n\nNapiš číslo řádku, které chceš obnovit (nebo zruš):");
+    if(!pick) return;
+    const h=history[+pick-1]; if(!h){alert("Neplatné číslo.");return;}
+    const p=await (await fetch(API+"?version="+h.version,{cache:"no-store"})).json();
+    if(!p||!p.data){alert("Verzi se nepovedlo načíst.");return;}
+    applyingRemote=true; S=Object.assign(BLANK(),p.data); applyingRemote=false;
+    forceNext=true; save(); render(); setTimeout(()=>{forceNext=false;},3000);
+    alert(`Obnoveno rozvržení z v${h.version} (${h.count} hostů).`);
+  }catch(e){ alert("Historii se nepovedlo načíst: "+e.message); }
+};
+[q,fGroup,fState].forEach(e=>e.addEventListener("input",renderGuests));
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape")return;
+  if(sheet.classList.contains("on")) closeSheet(); else {sel=null;render();}});
+
+/* ============================ KDO JEŠTĚ NEMÁ MÍSTO ============================
+   Čítač v hlavičce říká jen počet. Tady je jmenný seznam — klepnutím na jméno
+   ho vybereš a pak klikneš lůžko/židli. Funguje na obou kartách.            */
+/* Kdo v tabulce dostal „Nedorazí", ale v plánu pořád drží místo. Nemažu to sám —
+   jen na to upozorním a nabídnu jedno kliknutí, ať je jasné, co se děje.       */
+function staleSlots(){
+  const M=MAP();
+  return Object.keys(M).filter(k=>{
+    const g=G[M[k]];
+    return !g || g.ucast==="x";        // nedorazí, nebo host, který už v tabulce není
+  });
+}
+function renderStale(){
+  const el=document.getElementById("stale");
+  const bad=staleSlots();
+  if(!bad.length){ el.className=""; el.innerHTML=""; return; }
+  el.className="stale";
+  const kdo=[...new Set(bad.map(k=>{const g=G[MAP()[k]];return g?g.name:"neznámý host";}))];
+  el.innerHTML=`<div><b>${bad.length} ${bad.length===1?"místo drží někdo, kdo nepřijde":"míst drží lidé, kteří nepřijdou"}:</b> `
+    +kdo.join(", ")+` <span class="tn">— v tabulce mají „Nedorazí"</span></div>`;
+  const b=document.createElement("button");
+  b.textContent=bad.length===1?"Uvolnit místo":"Uvolnit místa";
+  b.onclick=()=>{const M=MAP();bad.forEach(k=>delete M[k]);save();render();};
+  el.append(b);
+}
+
+function renderTodo(){
+  const el=document.getElementById("todo");
+  const chybi=LIVE().filter(g=>!slotOf(g.id)&&(seating()||sp(g)!=="no"));
+  if(!chybi.length){
+    el.className="todo done";
+    el.innerHTML=`<div class="th"><b>✓ ${seating()?"Všichni mají místo u stolu":"Všichni jsou uloženi"}</b></div>`;
+    return;
+  }
+  el.className="todo";
+  const neurc=seating()?[]:chybi.filter(g=>sp(g)==="unk");
+  el.innerHTML=`<div class="th"><b>${seating()?"Ještě bez místa u stolu":"Ještě bez lůžka"}: ${chybi.length}</b>`
+    +(neurc.length?`<span class="tn">z toho u ${neurc.length} není rozhodnuté, jestli na statku vůbec spí (žluté)</span>`:"")
+    +`</div>`;
+  const box=document.createElement("div");box.className="chips";
+  for(const g of chybi){
+    const [fg,bg]=gcol(g.group);
+    const c=document.createElement("button");
+    const unk=!seating()&&sp(g)==="unk";
+    c.className="chip"+(sel===g.id?" sel":"")+(unk?" unk":"");
+    c.style.cssText=unk?"":`border-color:${fg};background:${bg};color:${fg}`;
+    c.textContent=g.name;
+    c.title=g.group+(unk?" · není rozhodnuté, jestli spí na statku":"");
+    c.draggable=true;
+    c.ondragstart=e=>{e.dataTransfer.setData("text/plain",g.id);sel=g.id;};
+    c.onclick=()=>{sel=sel===g.id?null:g.id;render();};
+    box.append(c);
+  }
+  el.append(box);
+}
+
+/* ---- přepínač Spaní / Zasedací pořádek ---- */
+document.querySelectorAll("#tabs button").forEach(b=>{
+  b.onclick=()=>{ view=b.dataset.v; localStorage.setItem("ubytovani-view",view);
+    sel=null; closeSheet(); render(); window.scrollTo({top:0}); };
+});
+function renderTabs(){
+  document.querySelectorAll("#tabs button").forEach(b=>
+    b.classList.toggle("on",b.dataset.v===view));
+  document.getElementById("hintSpani").style.display=seating()?"none":"";
+  document.getElementById("hintSezeni").style.display=seating()?"":"none";
+  // filtr stavu má u sezení jiný smysl než u spaní — nabídku přestavíme, ne skryjeme
+  const f=document.getElementById("fState");
+  const want=seating()
+    ? [["todo","K usazení (bez místa)"],["all","Všichni"]]
+    : [["todo","K uložení (spí + neurčeno)"],["unassigned","Jen nepřiřazení"],
+       ["unk","Jen neurčeno"],["yes","Jen „spí\""],["all","Všichni"]];
+  if(f.dataset.mode!==view){
+    const keep=f.value;
+    f.innerHTML="";
+    want.forEach(([v,t])=>f.add(new Option(t,v)));
+    f.value=want.some(w=>w[0]===keep)?keep:"todo";
+    f.dataset.mode=view;
+  }
+}
+
+function render(){renderTabs();renderVerBar();renderStale();renderTodo();renderGuests();renderZones();renderStats();renderPrint();renderSync();renderSelBar();}
+render();
+initSync();
+</script>
+</body>
+</html>
